@@ -134,3 +134,12 @@ form > button { justify-self: start; }
   .history > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .notice { position: static; margin: 0 14px 14px; }
 }
+.anki-import { padding-bottom: 18px; }
+.import-sample { padding: 10px 13px; border-left: 2px solid var(--line); overflow-wrap: anywhere; }
+.anki-history { width: 100%; }
+.review-list { display: grid; gap: 5px; list-style: none; margin: 8px 0; padding: 0; }
+.review-list li { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; font-size: .87rem; }
+.anki-history .sub { font-size: .86rem; }
+@media (max-width: 650px) {
+  .history > div > .anki-history { grid-column: 1 / -1; }
+}
