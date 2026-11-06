@@ -3,6 +3,7 @@ import { useWorkspace } from '../context';
 import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, selectLanguage, topicMaterials } from '../domain/model';
 import type { Outcome, PracticeItem, PracticeMode, Study, Word } from '../domain/model';
 import { Recording } from './Recording';
+import { WordCue } from './WordCue';
 import { DailyPractice } from './DailyPractice';
 import { Empty, Fold, Heading, SourceLink, SourceText, VoiceButtons } from './common';
 import { AnkiHistory } from './AnkiHistory';
@@ -74,7 +75,11 @@ function PracticeCard({ item, next, mode, options, score }: {
   const expected = word?.meaning ? word.title : undefined;
   const correct = expected && checked && comparable(answer, item.language) === comparable(expected, item.language);
   const prompt = word
-    ? word.meaning ? (mode === 'spoken' ? `Как сказать «${word.meaning}»? Используй слово в своём предложении.` : `Как сказать «${word.meaning}»?`)
+    ? word.meaning ? {
+      spoken: 'Вспомни слово по подсказке и употреби его в своём предложении.',
+      choice: 'Выбери слово, которое подходит к подсказке.',
+      written: 'Напиши слово, которое подходит к подсказке.'
+    }[mode]
       : mode === 'spoken' ? 'Прослушай слово и попробуй употребить его.' : 'Прослушай слово и напиши с ним своё предложение.'
     : (resource?.prompt || topic?.prompt) || (resource ? kinds[resource.kind].prompt : 'Расскажи о ситуации своими словами.');
   const openReference = revealed || checked;
@@ -85,6 +90,7 @@ function PracticeCard({ item, next, mode, options, score }: {
         <button type="button" className="subtle" onClick={next}>Дальше →</button></div>
       {!word && <h2>{item.title}</h2>}
       <p className="prompt source-text">{prompt}</p>
+      {word?.meaning && <WordCue word={word} />}
       {topicWords.length > 0 && <Fold title={`Слова для ответа · ${topicWords.length}`}>
         <ul>{topicWords.map(word => <li key={word.id}><strong lang={word.language}>{word.title}</strong>{word.meaning && ' · ' + word.meaning}
           <WordExamples word={word} glossary={glossary} />

@@ -361,3 +361,7 @@ button:disabled { opacity: .52; cursor: default; }
   .appbar .account { padding-inline: 7px; }
   .app-controls { gap: 1px; }
 }
+
+.word-cue { margin: 0 0 16px; padding: 12px 15px; border: 1px solid #4b665a; border-radius: 10px; background: #12231d; }
+.word-cue > .source-text { margin-top: 3px; }
+.daily-session .word-cue { margin-top: 12px; }
