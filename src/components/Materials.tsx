@@ -46,7 +46,7 @@ function MaterialForm({ resource, done }: { resource?: Resource; done: (id: stri
     } catch { notify('Не удалось прочитать текст. Можно вставить его вручную.'); }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const rawUrl = String(form.get('url')).trim();
@@ -62,7 +62,7 @@ function MaterialForm({ resource, done }: { resource?: Resource; done: (id: stri
       translation: String(form.get('translation')).trim() || undefined,
       answer: kind === 'exercise' ? answer.trim() : ''
     };
-    if (update(current => ({ ...selectLanguage(current, language), resources: upsert(current.resources, entry) }))) {
+    if (await update(current => ({ ...selectLanguage(current, language), resources: upsert(current.resources, entry) }))) {
       notify('Материал сохранён.');
       done(entry.id);
     }
@@ -118,7 +118,7 @@ function ChatExchange({ source, setSource }: { source?: Resource; setSource: (re
     try {
       const packet = parseChatPackage(file.size ? await file.text() : pasted);
       let result: ReturnType<typeof applyChatPackage> | undefined;
-      const saved = update(current => {
+      const saved = await update(current => {
         if (current.language !== study.language) throw new Error('Активный язык изменился. Открой форму ещё раз.');
         if (selected && !current.topics.some(topic => topic.id === selected && topic.language === packet.language)) {
           throw new Error('Язык выбранной темы отличается от языка пакета. Выбери «Тема из файла».');

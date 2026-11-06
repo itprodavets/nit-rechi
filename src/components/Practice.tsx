@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useWorkspace } from '../context';
 import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, selectLanguage, topicMaterials } from '../domain/model';
 import type { Outcome, PracticeItem, PracticeMode, Study, Word } from '../domain/model';
@@ -141,20 +141,30 @@ function PracticeCard({ item, next, mode, options, score }: {
 export function Practice() {
   const { study, active, practiceId, practice, update, notify } = useWorkspace();
   const queue = useMemo(() => practiceQueue(study), [study]);
+  const scoring = useRef(false);
   const [attempt, reset] = useState(0);
   const [preferred, chooseMode] = useState<PracticeMode>('spoken');
   const item = queue.find(entry => entry.id === practiceId) ?? queue[0];
   const due = queue.filter(entry => (study.results[entry.id]?.due ?? 0) <= Date.now()).length;
   const options = item && 'meaning' in item && item.meaning ? answerChoices(item, active.words) : [];
   const mode = preferred === 'choice' && !options.length ? 'written' : preferred;
-  function score(result: Outcome) {
-    if (!item) return;
-    const now = Date.now();
-    const next = assess(study, item.id, result, now, mode);
-    if (!update(() => next)) return;
-    notify(result === 'retry' ? 'Попробуй ответить ещё раз.' : 'Следующее повторение · ' + dateLabel(next.results[item.id].due));
-    practice(result === 'retry' ? item.id : practiceQueue(next).find(entry => entry.id !== item.id)?.id ?? item.id);
-    reset(value => value + 1);
+  async function score(result: Outcome) {
+    if (!item || scoring.current) return;
+    scoring.current = true;
+    try {
+      let next: Study | undefined;
+      const saved = await update(current => {
+        if (current.language !== item.language) return current;
+        next = assess(current, item.id, result, Date.now(), mode);
+        return next;
+      });
+      if (!saved || !next) return;
+      notify(result === 'retry' ? 'Попробуй ответить ещё раз.' : 'Следующее повторение · ' + dateLabel(next.results[item.id].due));
+      practice(result === 'retry' ? item.id : practiceQueue(next).find(entry => entry.id !== item.id)?.id ?? item.id);
+      reset(value => value + 1);
+    } finally {
+      scoring.current = false;
+    }
   }
   function advance() {
     const index = queue.findIndex(entry => entry.id === item?.id);

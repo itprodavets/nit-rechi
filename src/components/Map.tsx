@@ -46,7 +46,7 @@ function TopicEditor({ entry, finish }: { entry?: Topic; finish: (id: string) =>
     return search ? active.words.filter(word => normalize([word.title, word.meaning, word.example].join(' '), study.language).includes(search)) : active.words;
   }, [query, active.words, study.language]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const title = String(data.get('title')).trim();
@@ -58,7 +58,7 @@ function TopicEditor({ entry, finish }: { entry?: Topic; finish: (id: string) =>
       prompt: String(data.get('prompt')).trim(),
       materials: text && !materials.some(material => material.text === text) ? [...materials, { format: String(data.get('format')), text }] : materials
     };
-    if (update(current => ({ ...current, topics: upsert(current.topics, next) }))) {
+    if (await update(current => ({ ...current, topics: upsert(current.topics, next) }))) {
       notify('Тема сохранена.');
       finish(next.id);
     }
@@ -106,10 +106,10 @@ function StarterMap() {
   const examples = starterTopics(study.language);
   const [selected, choose] = useState(examples[0].id);
   const topic = examples.find(example => example.id === selected) ?? examples[0];
-  function copy() {
+  async function copy() {
     const match = (entry: Topic) => entry.language === topic.language && entry.title === topic.title;
     let id = topic.id;
-    if (update(current => {
+    if (await update(current => {
       const existing = current.topics.find(match);
       if (existing) { id = existing.id; return current; }
       return { ...current, topics: upsert(current.topics, topic) };

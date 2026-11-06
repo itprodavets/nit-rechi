@@ -19,13 +19,13 @@ export function WordExamplesList({ word, glossary }: { word: Word; glossary?: Gl
 export function WordExamples({ word, glossary }: { word: Word; glossary?: Glossary }) {
   const { update, notify } = useWorkspace();
   const [open, setOpen] = useState(false);
-  function add(event: FormEvent<HTMLFormElement>) {
+  async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const value = String(new FormData(form).get('example')).normalize('NFC').trim();
     if (!value) return;
     let duplicate = false;
-    const saved = update(current => {
+    const saved = await update(current => {
       const entry = current.words.find(candidate => candidate.id === word.id);
       if (!entry) return current;
       if (wordExamples(entry).some(example => example.text.normalize('NFC').trim() === value)) {

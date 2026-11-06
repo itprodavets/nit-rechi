@@ -24,7 +24,7 @@ function separatedRows(text, separator) {
 
 export function cleanField(value, hasHtml) {
   const text = (value ?? '').replace(/\[sound:[^\]]+\]/gi, '');
-  if (!hasHtml) return text.trim();
+  if (!hasHtml || !/[<&]/.test(text)) return text.trim();
   const template = document.createElement('template');
   template.innerHTML = text.replace(/<br\s*\/?\s*>/gi, '\n');
   template.content.querySelectorAll('script, style').forEach(node => node.remove());
