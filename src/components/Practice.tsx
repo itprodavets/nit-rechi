@@ -54,11 +54,17 @@ function Recording({ itemId }: { itemId: string }) {
 }
 
 function PracticeCard({ item, next, score }: { item: PracticeItem; next: () => void; score: (result: Outcome) => void }) {
+  const { active } = useWorkspace();
   const [revealed, setRevealed] = useState(false);
   const word = 'meaning' in item ? item : undefined;
   const topic = 'links' in item ? item : undefined;
   const resource = 'kind' in item ? item : undefined;
   const materials = topic ? topicMaterials(topic) : [];
+  const topicWords = useMemo(() => {
+    if (!topic) return [];
+    const ids = new Set(topic.links);
+    return active.words.filter(word => ids.has(word.id));
+  }, [active.words, topic]);
   const reference = word ? word.example || word.title : resource ? (resource.kind === 'exercise' ? resource.answer : resource.text) : materials.at(-1)?.text;
   const prompt = word
     ? word.meaning ? `Вспомни, как сказать «${word.meaning}». Используй слово в своём предложении.` : 'Прослушай слово и попробуй употребить его.'
@@ -68,6 +74,9 @@ function PracticeCard({ item, next, score }: { item: PracticeItem; next: () => v
       <div className="task-top"><p className="kicker">Ответь вслух</p><button type="button" className="subtle" onClick={next}>Дальше →</button></div>
       {!word && <h2>{item.title}</h2>}
       <p className="prompt source-text">{prompt}</p>
+      {topicWords.length > 0 && <Fold title={`Слова для ответа · ${topicWords.length}`}>
+        <ul>{topicWords.map(word => <li key={word.id}><strong lang={word.language}>{word.title}</strong>{word.meaning && ' · ' + word.meaning}</li>)}</ul>
+      </Fold>}
       {resource?.kind === 'exercise' && resource.text && <p className="source-text" lang={item.language}>{resource.text}</p>}
       {word && !word.meaning && <VoiceButtons text={word.title} language={item.language} />}
       <Recording itemId={item.id} />

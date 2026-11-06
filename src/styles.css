@@ -140,6 +140,8 @@ form > button { justify-self: start; }
 .review-list { display: grid; gap: 5px; list-style: none; margin: 8px 0; padding: 0; }
 .review-list li { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: center; font-size: .87rem; }
 .anki-history .sub { font-size: .86rem; }
+.today-anki { display: grid; justify-items: start; gap: 12px; max-width: 760px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.today-anki fieldset, .today-anki > label { width: 100%; }
 @media (max-width: 650px) {
   .history > div > .anki-history { grid-column: 1 / -1; }
 }

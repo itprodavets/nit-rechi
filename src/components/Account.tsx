@@ -7,6 +7,7 @@ import { saveReviews } from '../domain/anki-history';
 import { languageName, normalize, selectLanguage } from '../domain/model';
 import { cleanField, readAnkiText } from '../domain/text-import.js';
 import { AnkiHistory } from './AnkiHistory';
+import { TodayAnki } from './TodayAnki';
 import { Fold, Heading } from './common';
 
 const textFile = /\.(txt|tsv|csv)$/i;
@@ -32,6 +33,7 @@ function AnkiImport() {
   const [type, setType] = useState('');
   const [override, setOverride] = useState<Columns>();
   const [language, setLanguage] = useState<string>();
+  const [customLanguage, setCustomLanguage] = useState('');
   const [busy, setBusy] = useState(false);
   const worker = useRef<Worker | null>(null);
   const loadVersion = useRef(0);
@@ -53,6 +55,7 @@ function AnkiImport() {
     [deck ? archive?.decks[deck] : deckChoices.length === 1 ? deckChoices[0][1] : '', names[columns[0] - 1]].filter(Boolean).join(' ')
   ), [archive, columns[0], columns[2], deck, deckChoices, names, notes]);
   const selectedLanguage = language ?? suggest ?? study.language;
+  const languageChoices = [...new Set([study.language, ...(suggest ? [suggest] : []), ...languageCodes])];
   const sample = notes.find(note => cleanField(note.fields[columns[0] - 1], note.html ?? true));
 
   async function choose(file?: File) {
@@ -101,7 +104,7 @@ function AnkiImport() {
     if (!archive || busy) return;
     setBusy(true);
     try {
-      const language = canonicalLanguage(selectedLanguage);
+      const language = canonicalLanguage(selectedLanguage === 'custom' ? customLanguage : selectedLanguage);
       if (columns.filter(Boolean).length !== new Set(columns.filter(Boolean)).size) throw new Error('Укажи разные поля для слова, значения и примера.');
       const entries = archiveWords(notes, language, columns);
       if (!entries.length) throw new Error('В выбранной колонке нет слов.');
@@ -154,8 +157,15 @@ function AnkiImport() {
       {sample && <div className="import-sample"><p className="kicker">Пример из файла</p>
         {columns.map((column, index) => column > 0 && <p key={index}><span className="sub">{columnLabels[index]} · </span>{cleanField(sample.fields[column - 1], sample.html ?? true) || '—'}</p>)}
       </div>}
-      <label>Язык импорта <input list="language-options" value={selectedLanguage} maxLength={35} onChange={event => setLanguage(event.target.value)} /></label>
-      <p className="sub">{suggest ? 'Предложение по содержимому · ' + languageName(suggest) + '. Проверь перед импортом.' : 'Язык не удалось определить уверенно. Проверь выбранный код.'}</p>
+      <label>Язык импорта <select value={selectedLanguage} onChange={event => setLanguage(event.target.value)}>
+        {languageChoices.map(code => <option key={code} value={code}>{languageName(code)}</option>)}
+        <option value="custom">Другой язык</option>
+      </select></label>
+      {selectedLanguage === 'custom' && <label>Код языка <input list="language-options" value={customLanguage} maxLength={35} required
+        placeholder="Например, nl или en-GB" onChange={event => setCustomLanguage(event.target.value)} /></label>}
+      <p className="sub">{language === undefined
+        ? (suggest ? 'Предложение по содержимому · ' + languageName(suggest) : 'Выбран язык из кабинета · ' + languageName(study.language)) + '. Можно изменить.'
+        : 'Укажи язык поля «Слово или фраза».'}</p>
       <button type="submit" className="primary">Импортировать</button>
     </>}
   </form>;
@@ -204,6 +214,7 @@ export function Account() {
       </div>
     </Fold>
     <Fold title={`Импорт Anki · ${active.words.length}`}><AnkiImport /></Fold>
+    {active.words.length > 0 && <TodayAnki key={study.language} />}
     {active.words.length > 0 && <WordLibrary key={study.language} />}
   </>;
 }
