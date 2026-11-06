@@ -27,7 +27,9 @@ function SpeechTask({ word, topic, target, count, done, date, close, save }: {
       <h2 ref={heading} tabIndex={-1}>{topic?.title ?? 'Ситуация из жизни'}</h2>
       <p className="prompt">{topic?.prompt || 'Вспомни реальную ситуацию. Расскажи, что произошло и что ты сказал бы собеседнику.'}</p>
       <p>Скажи 2–3 фразы и употреби {word.meaning ? 'слово со значением' : 'слово'} <strong lang={word.meaning ? undefined : word.language}>«{cue}»</strong>.</p>
-      <p className="sub">{target.lapses ? `Ответов «Снова» в Anki за 30 дней · ${target.lapses}` : 'На прошлом устном ответе понадобилась помощь или повторение.'}</p>
+      <p className="sub">{target.lapses ? `Ответов «Снова» в Anki за 30 дней · ${target.lapses}`
+        : target.fromReview ? 'Это слово уже встречалось в Anki. Теперь попробуй употребить его в речи.'
+          : 'На прошлом устном ответе понадобилась помощь или повторение.'}</p>
       <Recording itemId={JSON.stringify(['daily-speech', date, word.id])} />
       {revealed ? <div className="reference">
         <h2 lang={word.language}>{word.title}</h2><WordExamplesList word={word} />
@@ -119,7 +121,7 @@ export function DailyPractice({ children }: { children: ReactNode }) {
         <h2 id="daily-practice-title">Практика на сегодня</h2>
         <p className="sub">{loading ? 'Подбираем слова по истории Anki…'
           : targets.length ? `Готово ${done} из ${targets.length} · Употреби сложные слова в речи`
-            : 'Подборка появится после сложных устных ответов или импорта истории повторений с ответами «Снова».'}</p>
+            : 'Подборка появится после сложных устных ответов или импорта Anki с историей повторений.'}</p>
         {hasAnki && error && <p className="sub" role="status">История Anki недоступна. Учтены сохранённые устные ответы.</p>}
       </div>
       {!loading && target && <button type="button" className="primary" onClick={start}>{done ? 'Продолжить' : 'Начать тренировку'}</button>}
