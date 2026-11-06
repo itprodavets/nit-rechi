@@ -23,8 +23,10 @@ export function wordExamples(word: Word) {
 
 export function vocabularyStatus(word: Word, result?: PracticeResult, summary?: ReviewSummary) {
   if (word.vocabularyLevel) return { level: word.vocabularyLevel, source: 'Ручная отметка' };
-  if (result?.result === 'independent') return { level: 'active' as const, source: 'Самостоятельный устный ответ' };
-  if (result?.result === 'assisted') return { level: 'passive' as const, source: 'Устный ответ с подсказкой' };
+  const spoken = result?.spokenResult ?? (result?.mode ? undefined : result?.result);
+  if (spoken === 'independent') return { level: 'active' as const, source: 'Самостоятельный устный ответ' };
+  if (spoken === 'assisted') return { level: 'passive' as const, source: 'Устный ответ с подсказкой' };
+  if (result?.result === 'independent') return { level: 'passive' as const, source: 'Самостоятельный ответ в упражнении' };
   if (summary && summary.recalled >= 2 && summary.latestRating >= 3
       && (summary.latestInterval >= 3 || wordExamples(word).length >= 2)) {
     return { level: 'passive' as const, source: 'Оценка по ответам Anki и контексту' };

@@ -1,3 +1,4 @@
+import { localDay } from './model';
 import type { Review } from './anki-model';
 
 let database: Promise<IDBDatabase> | undefined;
@@ -99,4 +100,26 @@ export async function deleteReviewKeys(keys: string[]) {
     transaction.onabort = () => reject(transaction.error);
     for (const key of keys) store.delete(key);
   });
+}
+
+export async function readAnkiDays(language: string, keys: ReadonlySet<string>, start: number, end: number) {
+  const days = new Map<string, { total: number; recalled: number }>();
+  const missed = new Map<string, number>();
+  if (!keys.size) return { days, missed };
+  await visitHistory(language, (key, reviews) => {
+    if (!keys.has(key)) return;
+    let latest: Review | undefined;
+    for (const review of reviews) {
+      const [at, , rating] = review;
+      if (at < start || at >= end || rating < 1 || rating > 4) continue;
+      if (!latest || at > latest[0]) latest = review;
+      const day = localDay(at);
+      const totals = days.get(day) ?? { total: 0, recalled: 0 };
+      totals.total++;
+      if (rating >= 2) totals.recalled++;
+      days.set(day, totals);
+    }
+    if (latest?.[2] === 1) missed.set(key, latest[0]);
+  });
+  return { days, missed };
 }

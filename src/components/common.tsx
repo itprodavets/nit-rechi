@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { GlossaryText } from './Glossary';
+import type { Glossary } from './Glossary';
 import { useWorkspace } from '../context';
 import { safeSourceUrl } from '../domain/chat-package.js';
 import { speak, stopSpeaking } from '../domain/voice.js';
@@ -26,8 +28,8 @@ export function VoiceButtons({ text, language }: { text: string; language: strin
   </div>;
 }
 
-export function SourceText({ text, language }: { text: string; language: string }) {
-  return <><p className="source-text" lang={language}>{text}</p><VoiceButtons text={text} language={language} /></>;
+export function SourceText({ text, language, glossary }: { text: string; language: string; glossary?: Glossary }) {
+  return <><GlossaryText text={text} language={language} glossary={glossary} /><VoiceButtons text={text} language={language} /></>;
 }
 
 export function SourceLink({ url }: { url: string }) {

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkspace } from '../context';
-import { assess, dateLabel, kinds, practiceQueue, selectLanguage, topicMaterials } from '../domain/model';
-import type { Outcome, PracticeItem, Study } from '../domain/model';
+import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, selectLanguage, topicMaterials } from '../domain/model';
+import type { Outcome, PracticeItem, PracticeMode, Study, Word } from '../domain/model';
 import { deleteTake, getTake, isRecording, stopVoice, toggleRecording } from '../domain/voice.js';
 import { Empty, Fold, Heading, SourceLink, SourceText, VoiceButtons } from './common';
 import { AnkiHistory } from './AnkiHistory';
 import { WordExamples, WordExamplesList } from './WordExamples';
 
-const resultLabels: Record<Outcome, string> = { retry: 'Нужно повторить', assisted: 'С подсказкой', independent: 'Самостоятельно' };
+import { GlossaryText } from './Glossary';
+import { englishLessons, levels } from '../domain/starter-materials';
 
 function addExample(study: Study): Study {
   const examples = [
@@ -54,65 +55,126 @@ function Recording({ itemId }: { itemId: string }) {
   </div>;
 }
 
-function PracticeCard({ item, next, score }: { item: PracticeItem; next: () => void; score: (result: Outcome) => void }) {
+function comparable(answer: string, language: string) {
+  return normalize(answer.replace(/[’‘]/gu, "'"), language).replace(/^[¡¿]+|[.!?。！？]+$/gu, '').replace(/\s+/gu, ' ');
+}
+
+function answerChoices(word: Word, words: Word[]) {
+  const key = (value: string) => comparable(value, word.language);
+  const seen = new Set([key(word.title)]);
+  const choices = [word.title];
+  const offset = Array.from(word.id).reduce((total, char) => (Math.imul(total, 31) + char.codePointAt(0)!) >>> 0, 0);
+  for (let index = 0; index < words.length && choices.length < 4; index++) {
+    const candidate = words[(offset + index) % words.length];
+    const value = key(candidate.title);
+    if (seen.has(value) || !candidate.meaning || key(candidate.meaning) === key(word.meaning)) continue;
+    seen.add(value);
+    choices.push(candidate.title);
+  }
+  if (choices.length < 3) return [];
+  const rotate = offset % choices.length;
+  return [...choices.slice(rotate), ...choices.slice(0, rotate)];
+}
+
+function PracticeCard({ item, next, mode, options, score }: {
+  item: PracticeItem; next: () => void; mode: PracticeMode; options: string[]; score: (result: Outcome) => void;
+}) {
   const { active } = useWorkspace();
   const [revealed, setRevealed] = useState(false);
+  const [answer, setAnswer] = useState('');
+  const [checked, setChecked] = useState(false);
   const word = 'meaning' in item ? item : undefined;
   const topic = 'links' in item ? item : undefined;
   const resource = 'kind' in item ? item : undefined;
   const materials = topic ? topicMaterials(topic) : [];
   const topicWords = useMemo(() => {
-    if (!topic) return [];
-    const ids = new Set(topic.links);
+    const ids = new Set(topic?.links);
     return active.words.filter(word => ids.has(word.id));
   }, [active.words, topic]);
+  const glossary = useMemo(() => {
+    const lesson = item.language === 'en' ? levels.find(level => englishLessons[level].resource.id === item.id) : undefined;
+    const hints = new Map(lesson ? englishLessons[lesson].glossary : undefined);
+    for (const word of active.words) if (word.meaning) {
+      const key = normalize(word.title, item.language);
+      if (!hints.has(key)) hints.set(key, word.meaning);
+    }
+    return hints;
+  }, [active.words, item.id, item.language]);
   const reference = resource ? (resource.kind === 'exercise' ? resource.answer : resource.text) : materials.at(-1)?.text;
+  const expected = word?.meaning ? word.title : undefined;
+  const correct = expected && checked && comparable(answer, item.language) === comparable(expected, item.language);
   const prompt = word
-    ? word.meaning ? `Вспомни, как сказать «${word.meaning}». Используй слово в своём предложении.` : 'Прослушай слово и попробуй употребить его.'
+    ? word.meaning ? (mode === 'spoken' ? `Как сказать «${word.meaning}»? Используй слово в своём предложении.` : `Как сказать «${word.meaning}»?`)
+      : mode === 'spoken' ? 'Прослушай слово и попробуй употребить его.' : 'Прослушай слово и напиши с ним своё предложение.'
     : (resource?.prompt || topic?.prompt) || (resource ? kinds[resource.kind].prompt : 'Расскажи о ситуации своими словами.');
+  const openReference = revealed || checked;
+
   return <div className="session">
     <section className="task">
-      <div className="task-top"><p className="kicker">Ответь вслух</p><button type="button" className="subtle" onClick={next}>Дальше →</button></div>
+      <div className="task-top"><p className="kicker">{word ? 'Словарь' : resource ? kinds[resource.kind].label : 'Разговорная тема'}</p>
+        <button type="button" className="subtle" onClick={next}>Дальше →</button></div>
       {!word && <h2>{item.title}</h2>}
       <p className="prompt source-text">{prompt}</p>
       {topicWords.length > 0 && <Fold title={`Слова для ответа · ${topicWords.length}`}>
         <ul>{topicWords.map(word => <li key={word.id}><strong lang={word.language}>{word.title}</strong>{word.meaning && ' · ' + word.meaning}
-          <WordExamples word={word} />
+          <WordExamples word={word} glossary={glossary} />
         </li>)}</ul>
       </Fold>}
-      {resource?.kind === 'exercise' && resource.text && <p className="source-text" lang={item.language}>{resource.text}</p>}
+      {resource?.kind === 'exercise' && resource.text && <GlossaryText text={resource.text} language={item.language} glossary={glossary} />}
       {word && !word.meaning && <VoiceButtons text={word.title} language={item.language} />}
-      <Recording itemId={item.id} />
-      {revealed ? <div className="reference">
-        <p className="kicker">{resource?.kind === 'exercise' ? 'Ответ для сравнения' : resource ? 'Исходный материал' : 'Пример для сравнения'}</p>
-        {word ? <><h2 lang={item.language}>{word.title}</h2><WordExamplesList word={word} /></>
-          : reference && <SourceText text={reference} language={item.language} />}
+      {mode === 'spoken' ? <Recording itemId={item.id} /> : <form className="practice-response" onSubmit={event => {
+        event.preventDefault();
+        if (answer.trim()) setChecked(true);
+      }}>
+        {mode === 'choice' ? <fieldset disabled={checked}>
+          <legend>Выбери один вариант</legend>
+          <div className="answer-options">{options.map((option, index) => <label key={option}
+            className={checked && option === expected ? 'answer-correct' : checked && option === answer ? 'answer-retry' : ''}>
+            <input type="radio" name="answer" checked={answer === option} onChange={() => setAnswer(option)} />
+            <span className="answer-index" aria-hidden="true">{index + 1}</span><span lang={item.language}>{option}</span>
+          </label>)}</div>
+        </fieldset> : <label>Твой ответ <textarea value={answer} onChange={event => setAnswer(event.target.value)} rows={expected ? 2 : 4}
+          lang={item.language} autoComplete="off" spellCheck={!expected} disabled={checked} placeholder="Напиши здесь…" /></label>}
+        {!checked && <button type="submit" className="primary" disabled={!answer.trim()}>{expected ? 'Проверить' : 'Сравнить с примером'}</button>}
+        {checked && <p className={correct ? 'answer-feedback answer-correct' : 'answer-feedback'} role="status">{expected
+          ? (correct ? 'Верно!' : 'Сравни свой ответ с вариантом ниже.') : 'Сравни свой ответ с примером и оцени, как получилось.'}</p>}
+      </form>}
+      {openReference ? <div className="reference">
+        <p className="kicker">{expected ? 'Ответ и контекст' : resource?.kind === 'exercise' ? 'Ответ для сравнения' : resource ? 'Исходный материал' : 'Пример для сравнения'}</p>
+        {word ? <><h2 lang={item.language}>{word.title}</h2><WordExamplesList word={word} glossary={glossary} /></>
+          : reference && <SourceText text={reference} language={item.language} glossary={glossary} />}
+        {resource?.translation && <Fold title="Перевод на русский"><p className="source-text" lang="ru">{resource.translation}</p></Fold>}
         {resource?.url && <SourceLink url={resource.url} />}
         {!word && !reference && !resource?.url && <p>Можно добавить пример ответа в карточке материала.</p>}
-        {materials.slice(0, -1).map(material => <Fold key={material.text} title={material.format}><SourceText text={material.text} language={item.language} /></Fold>)}
-      </div> : <button type="button" className="subtle reveal" onClick={() => setRevealed(true)}>
+        {materials.slice(0, -1).map(material => <Fold key={material.text} title={material.format}><SourceText text={material.text} language={item.language} glossary={glossary} /></Fold>)}
+      </div> : mode === 'spoken' && <button type="button" className="subtle reveal" onClick={() => setRevealed(true)}>
         {resource?.kind === 'exercise' ? 'Показать ответ' : resource ? 'Показать материал' : 'Показать пример'}
       </button>}
       {word && <AnkiHistory word={word} />}
     </section>
-    <section className="assessment" aria-label="Самооценка ответа">
-      <p className="kicker">Как получилось?</p>
-      <div className="actions">{(Object.keys(resultLabels) as Outcome[]).map(result =>
-        <button type="button" key={result} className={result === 'independent' ? 'primary' : ''} onClick={() => score(result)}>{resultLabels[result]}</button>)}</div>
-    </section>
+    {(mode === 'spoken' || checked) && <section className="assessment" aria-label="Результат ответа">
+      {mode !== 'spoken' && expected ? <button type="button" className="primary" onClick={() => score(correct ? 'independent' : 'retry')}>
+        {correct ? 'Сохранить и продолжить →' : 'Сохранить и повторить'}
+      </button> : <><p className="kicker">Как получилось?</p>
+        <div className="actions">{(Object.keys(resultLabels) as Outcome[]).map(result =>
+          <button type="button" key={result} className={result === 'independent' ? 'primary' : ''} onClick={() => score(result)}>{resultLabels[result]}</button>)}</div></>}
+    </section>}
   </div>;
 }
 
 export function Practice() {
-  const { study, practiceId, practice, update, notify } = useWorkspace();
+  const { study, active, practiceId, practice, update, notify } = useWorkspace();
   const queue = useMemo(() => practiceQueue(study), [study]);
   const [attempt, reset] = useState(0);
+  const [preferred, chooseMode] = useState<PracticeMode>('spoken');
   const item = queue.find(entry => entry.id === practiceId) ?? queue[0];
   const due = queue.filter(entry => (study.results[entry.id]?.due ?? 0) <= Date.now()).length;
+  const options = item && 'meaning' in item && item.meaning ? answerChoices(item, active.words) : [];
+  const mode = preferred === 'choice' && !options.length ? 'written' : preferred;
   function score(result: Outcome) {
     if (!item) return;
     const now = Date.now();
-    const next = assess(study, item.id, result, now);
+    const next = assess(study, item.id, result, now, mode);
     if (!update(() => next)) return;
     notify(result === 'retry' ? 'Попробуй ответить ещё раз.' : 'Следующее повторение · ' + dateLabel(next.results[item.id].due));
     practice(result === 'retry' ? item.id : practiceQueue(next).find(entry => entry.id !== item.id)?.id ?? item.id);
@@ -123,32 +185,13 @@ export function Practice() {
     practice(queue[(index + 1) % queue.length].id);
     reset(value => value + 1);
   }
-  return <><Heading title="Устная практика" detail={due ? `К повторению · ${due} из ${queue.length}` : item ? 'Можно потренироваться заранее' : undefined} />
-    {item ? <PracticeCard key={item.id + ':' + attempt} item={item} next={advance} score={score} /> :
+  return <><Heading title="Практика" detail={due ? `К повторению · ${due} из ${queue.length}` : item ? 'Можно потренироваться заранее' : undefined} />
+    {item ? <>
+      <div className="practice-modes" role="group" aria-label="Способ ответа">
+        {(Object.keys(modeLabels) as PracticeMode[]).filter(value => value !== 'choice' || options.length > 0)
+          .map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => chooseMode(value)}>{modeLabels[value]}</button>)}
+      </div>
+      <PracticeCard key={JSON.stringify([item.id, attempt, mode])} item={item} mode={mode} options={options} next={advance} score={score} />
+    </> :
       <Empty sample={() => update(addExample)}>Начни со своего текста, упражнения или слов из Anki.</Empty>}</>;
-}
-
-export function Progress() {
-  const { study, active, practice } = useWorkspace();
-  const queue = useMemo(() => practiceQueue(study), [study]);
-  const practiced = queue.filter(item => study.results[item.id]);
-  const independent = practiced.filter(item => study.results[item.id].result === 'independent').length;
-  const due = queue.filter(item => (study.results[item.id]?.due ?? 0) <= Date.now()).length;
-  const imported = active.words.filter(word => word.ankiReviews);
-  return <><Heading title="Прогресс" />
-    <div className="metrics">
-      <div><strong>{practiced.length}</strong><span>Попробовано вслух</span></div>
-      <div><strong>{independent}</strong><span>Самостоятельно</span></div>
-      <div><strong>{due}</strong><span>К повторению</span></div>
-    </div>
-    {imported.length > 0 && <Fold title={`История Anki · слов с ответами ${imported.length}`}>
-      <p className="sub">Ответы в Anki учитываются отдельно от устной практики.</p>
-      <div className="history">{imported.slice(0, 30).map(word => <div key={word.id}><button type="button" onClick={() => practice(word.id)}>{word.title}</button><span>{word.ankiReviews} ответов</span></div>)}</div>
-      {imported.length > 30 && <p className="sub">Первые 30 слов. Остальные доступны в колоде и на карте.</p>}
-    </Fold>}
-    {practiced.length ? <div className="history">{practiced.map(item => {
-      const result = study.results[item.id];
-      return <div key={item.id}><button type="button" onClick={() => practice(item.id)}>{item.title}</button><span>{resultLabels[result.result]}</span><span>{result.due <= Date.now() ? 'Можно повторить сейчас' : 'Повторить ' + dateLabel(result.due)}</span></div>;
-    })}</div> : <p className="sub">Отметь результат после первого устного ответа.</p>}
-  </>;
 }

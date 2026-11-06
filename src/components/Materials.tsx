@@ -4,6 +4,7 @@ import { useWorkspace } from '../context';
 import { applyChatPackage, buildChatPrompt, parseChatPackage, safeSourceUrl } from '../domain/chat-package.js';
 import { kinds, upsert } from '../domain/model';
 import type { MaterialKind, Resource } from '../domain/model';
+import { StarterMaterials } from './StarterMaterials';
 import { copyText, Fold, Heading, SourceLink, SourceText } from './common';
 
 function TopicSelect({ value, change, fallback }: { value: string; change: (id: string) => void; fallback: string }) {
@@ -45,8 +46,10 @@ function MaterialForm({ resource, done }: { resource?: Resource; done: (id: stri
     if (rawUrl && !url) { notify('Нужна ссылка с https:// или http://.'); return; }
     if (!text.trim() && !url && !(kind === 'exercise' && prompt)) { notify('Добавь текст, ссылку или условие упражнения.'); return; }
     const entry: Resource = {
+      ...resource,
       id: resource?.id ?? crypto.randomUUID(), title: title.trim(), language: study.language, kind, text: text.trim(), prompt, url,
       topicId: active.topics.find(entry => entry.id === topic)?.id,
+      translation: String(form.get('translation')).trim() || undefined,
       answer: kind === 'exercise' ? String(form.get('answer')).trim() : ''
     };
     if (update(current => ({ ...current, resources: upsert(current.resources, entry) }))) {
@@ -65,6 +68,7 @@ function MaterialForm({ resource, done }: { resource?: Resource; done: (id: stri
     </div>
     <label>Импортировать текст <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={event => void importFile(event.currentTarget)} /></label>
     <label>Текст, диалог или условия задания <textarea rows={5} maxLength={250000} value={text} onChange={event => setText(event.target.value)} /></label>
+    <label>Перевод на русский <textarea name="translation" rows={3} defaultValue={resource?.translation} maxLength={250000} /></label>
     <label>Ссылка на источник <input name="url" type="url" defaultValue={resource?.url} maxLength={2000} placeholder="https://…" /></label>
     <label>Что сделать или сказать <textarea name="prompt" rows={2} defaultValue={resource?.prompt} maxLength={4000} /></label>
     {kind === 'exercise' && <label>Ответ для сравнения <textarea name="answer" rows={3} defaultValue={resource?.answer} maxLength={12000} /></label>}
@@ -132,8 +136,9 @@ export function Materials() {
   const editor = useRef<HTMLDetailsElement>(null);
   return <><Heading title="Материалы" detail="Тексты, упражнения и записи для разговорной практики." />
     <div className="library">
+      <StarterMaterials />
       <ChatExchange key={source?.id ?? 'all'} source={source} setSource={setSource} />
-      <details ref={editor} className="fold" open={!active.resources.length || undefined}>
+      <details ref={editor} className="fold">
         <summary>{editing ? 'Редактировать материал' : 'Добавить материал'}</summary>
         <MaterialForm key={revision} resource={editing} done={id => {
           setOpened(id); setEditing(undefined); reset(value => value + 1);
@@ -149,6 +154,7 @@ export function Materials() {
           <SourceLink url={resource.url} />
           {resource.text && <Fold title={resource.kind === 'exercise' ? 'Читать условие' : 'Открыть текст'} open={resource.id === opened || undefined}>
             <SourceText text={resource.text} language={resource.language} />
+            {resource.translation && <Fold title="Перевод на русский"><p className="source-text" lang="ru">{resource.translation}</p></Fold>}
           </Fold>}
           <div className="actions">
             <button className="primary" type="button" onClick={() => practice(resource.id)}>{kind.action}</button>
