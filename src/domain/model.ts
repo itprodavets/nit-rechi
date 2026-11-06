@@ -1,5 +1,6 @@
 export type MaterialKind = 'reading' | 'exercise' | 'dialogue' | 'media';
 export type Outcome = 'independent' | 'assisted' | 'retry';
+export type VocabularyLevel = 'learning' | 'passive' | 'active';
 
 export interface Word {
   id: string;
@@ -10,6 +11,7 @@ export interface Word {
   chatExamples?: string[];
   ankiGuid?: string;
   ankiReviews?: number;
+  vocabularyLevel?: VocabularyLevel;
 }
 
 export interface Topic {

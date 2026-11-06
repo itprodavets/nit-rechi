@@ -21,7 +21,7 @@ async function accessRecording(mode, operation) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('takes', mode);
     const request = operation(transaction.objectStore('takes'));
-    transaction.oncomplete = () => resolve(request.result);
+    transaction.oncomplete = () => resolve(request?.result);
     transaction.onabort = () => reject(transaction.error);
   });
 }
@@ -31,7 +31,13 @@ export function getTake(id) {
 }
 
 export function deleteTake(id) {
-  return accessRecording('readwrite', store => store.delete(id));
+  return deleteTakes([id]);
+}
+
+export function deleteTakes(ids) {
+  return accessRecording('readwrite', store => {
+    for (const id of ids) store.delete(id);
+  });
 }
 
 export function stopVoice() {

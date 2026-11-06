@@ -4,9 +4,9 @@ import { useWorkspace } from '../context';
 import { archiveWords, mergeImportedWords, notesInDeck, reviewKey, suggestColumns, suggestLanguage } from '../domain/anki-model';
 import type { Archive, Columns, Review } from '../domain/anki-model';
 import { saveReviews } from '../domain/anki-history';
-import { languageName, normalize, selectLanguage } from '../domain/model';
+import { languageName, selectLanguage } from '../domain/model';
 import { cleanField, readAnkiText } from '../domain/text-import.js';
-import { AnkiHistory } from './AnkiHistory';
+import { WordLibrary } from './WordLibrary';
 import { TodayAnki } from './TodayAnki';
 import { Fold, Heading } from './common';
 
@@ -41,22 +41,32 @@ function AnkiImport() {
   const deckChoices = useMemo(() => {
     if (!archive) return [];
     const present = new Set(archive.notes.flatMap(note => note.deckIds));
-    return Object.entries(archive.decks).filter(([id]) => present.has(id));
+    const paths = new Set<string>();
+    for (const id of present) {
+      const parts = archive.decks[id]?.split('::') ?? [];
+      for (let length = 1; length <= parts.length; length++) paths.add(parts.slice(0, length).join('::'));
+    }
+    return Object.entries(archive.decks).filter(([, name]) => paths.has(name))
+      .sort(([, first], [, second]) => first.localeCompare(second));
   }, [archive]);
-  const deckNotes = useMemo(() => archive ? notesInDeck(archive, deck) : [], [archive, deck]);
+  const chosenDeck = deckChoices.length > 1 ? deck : deckChoices[0]?.[0] ?? '';
+  const deckNotes = useMemo(() => archive && (deckChoices.length <= 1 || chosenDeck)
+    ? notesInDeck(archive, chosenDeck === 'all' ? '' : chosenDeck) : [], [archive, chosenDeck, deckChoices.length]);
   const typeChoices = useMemo(() => [...new Set(deckNotes.map(note => note.typeId))], [deckNotes]);
-  const chosenType = typeChoices.includes(type) ? type : typeChoices[0];
+  const chosenType = typeChoices.length > 1 ? type : typeChoices[0] ?? '';
   const notes = useMemo(() => deckNotes.filter(note => note.typeId === chosenType), [deckNotes, chosenType]);
   const names = archive?.types[chosenType] ?? [];
   const count = useMemo(() => notes.reduce((maximum, note) => Math.max(maximum, note.fields.length), 0), [notes]);
   const columns = override ?? suggestColumns(names, count);
   const suggest = useMemo(() => suggestLanguage(
     notes.slice(0, 80).map(note => [columns[0], columns[2]].filter(Boolean).map(column => cleanField(note.fields[column - 1], note.html ?? true)).join(' ')),
-    [deck ? archive?.decks[deck] : deckChoices.length === 1 ? deckChoices[0][1] : '', names[columns[0] - 1]].filter(Boolean).join(' ')
-  ), [archive, columns[0], columns[2], deck, deckChoices, names, notes]);
+    [archive?.decks[chosenDeck], names[columns[0] - 1]].filter(Boolean).join(' ')
+  ), [archive, columns[0], columns[2], chosenDeck, names, notes]);
   const selectedLanguage = language ?? suggest ?? study.language;
   const languageChoices = [...new Set([study.language, ...(suggest ? [suggest] : []), ...languageCodes])];
-  const sample = notes.find(note => cleanField(note.fields[columns[0] - 1], note.html ?? true));
+  const samples = useMemo(() => notes.slice(0, 30).map(note => columns.map(column =>
+    column ? cleanField(note.fields[column - 1], note.html ?? true) : '')
+  ).filter(row => row[0]).slice(0, 5), [notes, columns[0], columns[1], columns[2]]);
 
   async function choose(file?: File) {
     worker.current?.terminate();
@@ -137,13 +147,17 @@ function AnkiImport() {
     <p className="sub">Архивы .apkg и .colpkg, базы Anki и текстовые .txt, .tsv, .csv. Для истории экспортируй архив с расписанием.</p>
     {busy && <p className="sub" role="status">Обрабатываем {filename}…</p>}
     {archive && !busy && <>
-      <p className="kicker">{filename} · заметок для импорта {notes.length}</p>
+      <p className="kicker">{filename}{notes.length > 0 && ` · заметок для импорта ${notes.length}`}</p>
       {deckChoices.length > 1 && <label>Колода <select value={deck} onChange={event => { setDeck(event.target.value); setType(''); setOverride(undefined); setLanguage(undefined); }}>
-        <option value="">Все колоды</option>{deckChoices.map(([id, title]) => <option key={id} value={id}>{title}</option>)}
+        <option value="" disabled>Выбери колоду</option>
+        {deckChoices.map(([id, title]) => <option key={id} value={id}>{title}</option>)}
+        <option value="all">Все колоды</option>
       </select></label>}
       {typeChoices.length > 1 && <label>Тип заметки <select value={chosenType} onChange={event => { setType(event.target.value); setOverride(undefined); setLanguage(undefined); }}>
+        <option value="" disabled>Выбери тип заметки</option>
         {typeChoices.map((id, index) => <option key={id} value={id}>Тип {index + 1} · {archive.types[id]?.join(', ') || 'поля без названий'}</option>)}
       </select><small>Если в файле несколько типов, импортируй их по очереди.</small></label>}
+      {notes.length > 0 && <>
       <div className="columns">{columnLabels.map((label, index) => <label key={label}>{label}
         <select value={columns[index]} onChange={event => {
           const next: Columns = [...columns];
@@ -154,8 +168,10 @@ function AnkiImport() {
           {Array.from({ length: count }, (_, column) => <option key={column} value={column + 1}>{column + 1} · {names[column] || 'Поле ' + (column + 1)}</option>)}
         </select>
       </label>)}</div>
-      {sample && <div className="import-sample"><p className="kicker">Пример из файла</p>
-        {columns.map((column, index) => column > 0 && <p key={index}><span className="sub">{columnLabels[index]} · </span>{cleanField(sample.fields[column - 1], sample.html ?? true) || '—'}</p>)}
+      {samples.length > 0 && <div className="import-sample"><p className="kicker">Проверь слова и значения</p>
+        <ol>{samples.map(([word, meaning, example], index) => <li key={index}>
+          <strong>{word}</strong>{meaning && ' · ' + meaning}{example && <p className="sub">{example}</p>}
+        </li>)}</ol>
       </div>}
       <label>Язык импорта <select value={selectedLanguage} onChange={event => setLanguage(event.target.value)}>
         {languageChoices.map(code => <option key={code} value={code}>{languageName(code)}</option>)}
@@ -167,29 +183,9 @@ function AnkiImport() {
         ? (suggest ? 'Предложение по содержимому · ' + languageName(suggest) : 'Выбран язык из кабинета · ' + languageName(study.language)) + '. Можно изменить.'
         : 'Укажи язык поля «Слово или фраза».'}</p>
       <button type="submit" className="primary">Импортировать</button>
+      </>}
     </>}
   </form>;
-}
-
-function WordLibrary() {
-  const { active, study, practice } = useWorkspace();
-  const [query, setQuery] = useState('');
-  const [opened, setOpened] = useState(false);
-  const [limit, setLimit] = useState(30);
-  const found = useMemo(() => {
-    const search = normalize(query, study.language);
-    return search ? active.words.filter(word => normalize(word.title + ' ' + word.meaning, study.language).includes(search)) : active.words;
-  }, [active.words, query, study.language]);
-  return <details className="fold" onToggle={event => setOpened(event.currentTarget.open)}>
-    <summary>Мои слова · {active.words.length}</summary>
-    {opened && <>
-      <label>Найти слово <input type="search" value={query} onChange={event => { setQuery(event.target.value); setLimit(30); }} /></label>
-      <div className="history">{found.slice(0, limit).map(word => <div key={word.id}>
-        <button type="button" onClick={() => practice(word.id)} lang={word.language}>{word.title}</button><span>{word.meaning}</span><AnkiHistory word={word} />
-      </div>)}</div>
-      {found.length > limit && <button type="button" onClick={() => setLimit(value => value + 30)}>Показать ещё</button>}
-    </>}
-  </details>;
 }
 
 export function Account() {
