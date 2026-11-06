@@ -13,7 +13,7 @@ function openHistory() {
 }
 
 export async function saveReviews(batches: [string, Review[]][]) {
-  const counts = new Map<string, number>();
+  const counts = new Map<string, { total: number; added: number }>();
   if (!batches.length) return counts;
   const db = await openHistory();
   await new Promise<void>((resolve, reject) => {
@@ -26,8 +26,9 @@ export async function saveReviews(batches: [string, Review[]][]) {
       const request = store.get(key);
       request.onsuccess = () => {
         const merged = new Map<string, Review>((request.result ?? []).map((event: Review) => [eventKey(event), event]));
+        const before = merged.size;
         for (const event of entries) merged.set(eventKey(event), event);
-        counts.set(key, merged.size);
+        counts.set(key, { total: merged.size, added: merged.size - before });
         store.put([...merged.values()], key);
       };
     }

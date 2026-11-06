@@ -16,7 +16,7 @@ export function AnkiHistory({ word }: { word: Word }) {
   const [reviews, setReviews] = useState<Review[]>();
   const [failed, setFailed] = useState(false);
   const [limit, setLimit] = useState(20);
-  const { ankiGuid, language } = word;
+  const { ankiGuid, language, ankiUpdatedAt } = word;
   useEffect(() => {
     if (!opened || !ankiGuid) return;
     let active = true;
@@ -25,7 +25,7 @@ export function AnkiHistory({ word }: { word: Word }) {
       () => { if (active) setFailed(true); }
     );
     return () => { active = false; };
-  }, [opened, ankiGuid, language]);
+  }, [opened, ankiGuid, language, ankiUpdatedAt]);
   if (!ankiGuid || !word.ankiReviews) return null;
   return <details className="fold anki-history" onToggle={event => setOpened(event.currentTarget.open)}>
     <summary>История Anki · {word.ankiReviews}</summary>
