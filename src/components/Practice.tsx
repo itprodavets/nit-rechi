@@ -1,30 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
 import { useWorkspace } from '../context';
-import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, selectLanguage, topicMaterials } from '../domain/model';
+import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, topicMaterials } from '../domain/model';
 import type { Outcome, PracticeItem, PracticeMode, Study, Word } from '../domain/model';
 import { Recording } from './Recording';
 import { WordCue } from './WordCue';
-import { DailyPractice } from './DailyPractice';
+import { addExample } from '../domain/sample-study';
 import { Empty, Fold, Heading, SourceLink, SourceText, VoiceButtons } from './common';
 import { AnkiHistory } from './AnkiHistory';
 import { WordExamples, WordExamplesList } from './WordExamples';
 
 import { GlossaryText } from './Glossary';
 import { englishLessons, levels } from '../domain/starter-materials';
-
-function addExample(study: Study): Study {
-  const examples = [
-    { id: 'sample-oversleep', title: 'oversleep', meaning: 'проспать', example: 'I overslept and got to the office a little late.' },
-    { id: 'sample-reschedule', title: 'reschedule', meaning: 'перенести на другое время', example: 'Could we reschedule our call for after lunch?' },
-    { id: 'sample-errands', title: 'run errands', meaning: 'сходить по делам', example: 'I need to run a few errands during lunch.' }
-  ].filter(word => !study.words.some(existing => existing.id === word.id)).map(word => ({ ...word, language: 'en' }));
-  const topic = { id: 'sample-office', language: 'en', title: 'Я в офисе', links: ['sample-oversleep', 'sample-reschedule'], prompt: 'Объясни, почему опаздываешь, и попроси перенести звонок.', material: 'I overslept, so I’m running late. Could we reschedule our call for after lunch?' };
-  return {
-    ...selectLanguage(study, 'en'),
-    words: [...study.words, ...examples],
-    topics: study.topics.some(entry => entry.id === topic.id) ? study.topics : [...study.topics, topic]
-  };
-}
 
 function comparable(answer: string, language: string) {
   return normalize(answer.replace(/[’‘]/gu, "'"), language).replace(/^[¡¿]+|[.!?。！？]+$/gu, '').replace(/\s+/gu, ' ');
@@ -145,7 +131,6 @@ export function Practice() {
   const [attempt, reset] = useState(0);
   const [preferred, chooseMode] = useState<PracticeMode>('spoken');
   const item = queue.find(entry => entry.id === practiceId) ?? queue[0];
-  const due = queue.filter(entry => (study.results[entry.id]?.due ?? 0) <= Date.now()).length;
   const options = item && 'meaning' in item && item.meaning ? answerChoices(item, active.words) : [];
   const mode = preferred === 'choice' && !options.length ? 'written' : preferred;
   async function score(result: Outcome) {
@@ -171,13 +156,13 @@ export function Practice() {
     practice(queue[(index + 1) % queue.length].id);
     reset(value => value + 1);
   }
-  return <><Heading title="Практика" detail={due ? `К повторению · ${due} из ${queue.length}` : item ? 'Можно потренироваться заранее' : undefined} />
-    {item ? <DailyPractice key={study.language}>
+  return <><Heading title="Свободная практика" detail="Выбери способ ответа и тренируйся в своём темпе." /><a className="back-to-today" href="#today">← К занятию на сегодня</a>
+    {item ? <>
       <div className="practice-modes" role="group" aria-label="Способ ответа">
         {(Object.keys(modeLabels) as PracticeMode[]).filter(value => value !== 'choice' || options.length > 0)
           .map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => chooseMode(value)}>{modeLabels[value]}</button>)}
       </div>
       <PracticeCard key={JSON.stringify([item.id, attempt, mode])} item={item} mode={mode} options={options} next={advance} score={score} />
-    </DailyPractice> :
+    </> :
       <Empty sample={() => update(addExample)}>Начни со своего текста, упражнения или слов из Anki.</Empty>}</>;
 }

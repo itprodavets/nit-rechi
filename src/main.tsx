@@ -1,27 +1,30 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LanguageMenu } from './components/Language';
+import { AppShell } from './components/AppShell';
 import { StudyContext } from './context';
 import { itemsForLanguage, pages } from './domain/model';
 import { readStudy, writeStudy } from './domain/study-storage';
 import type { Page, Study } from './domain/model';
 import { stopVoice } from './domain/voice.js';
 import './styles.css';
+import './shell.css';
+import './learning.css';
 
+const Today = lazy(() => import('./components/Today').then(module => ({ default: module.Today })));
 const Practice = lazy(() => import('./components/Practice').then(module => ({ default: module.Practice })));
 const Progress = lazy(() => import('./components/Progress').then(module => ({ default: module.Progress })));
 const MapPage = lazy(() => import('./components/Map').then(module => ({ default: module.MapPage })));
 const Materials = lazy(() => import('./components/Materials').then(module => ({ default: module.Materials })));
 const Account = lazy(() => import('./components/Account').then(module => ({ default: module.Account })));
 
-const screens = { practice: Practice, map: MapPage, materials: Materials, progress: Progress, account: Account };
+const screens = { today: Today, practice: Practice, map: MapPage, materials: Materials, progress: Progress, account: Account };
 function subscribe(listener: () => void) {
   window.addEventListener('hashchange', listener);
   return () => window.removeEventListener('hashchange', listener);
 }
 function route(): Page {
   const value = location.hash.slice(1);
-  return Object.hasOwn(pages, value) ? value as Page : 'practice';
+  return Object.hasOwn(pages, value) ? value as Page : 'today';
 }
 function go(page: Page) {
   if (location.hash !== '#' + page) location.hash = page;
@@ -42,6 +45,11 @@ function App({ initial }: { initial: Study }) {
     stopVoice();
     window.scrollTo(0, 0);
   }, [page]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => notify(''), 6000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   useEffect(() => {
     window.addEventListener('pagehide', stopVoice);
     return () => window.removeEventListener('pagehide', stopVoice);
@@ -69,15 +77,7 @@ function App({ initial }: { initial: Study }) {
   const openResource = (id: string) => { setResource(id); go('materials'); };
 
   return <StudyContext.Provider value={{ study, active, notify, update, go, practice, openTopic, openResource, practiceId, topicId, resourceId }}>
-    <header className="appbar">
-      <a className="brand" href="#practice" aria-label="Нить речи — к практике"><span aria-hidden="true">✳</span> Нить речи</a>
-      <nav aria-label="Основные разделы">
-        {(Object.keys(pages) as Page[]).filter(entry => entry !== 'account').map(entry =>
-          <a key={entry} href={'#' + entry} aria-current={entry === page ? 'page' : undefined}>{pages[entry]}</a>)}
-      </nav>
-      <div className="app-controls"><LanguageMenu /><a className="account" href="#account" aria-current={page === 'account' ? 'page' : undefined}>Кабинет</a></div>
-    </header>
-    <main id="screen"><Suspense fallback={<p className="sub" role="status">Загружаем…</p>}><Screen /></Suspense></main>
+    <AppShell page={page}><Suspense fallback={<p className="sub" role="status">Загружаем…</p>}><Screen key={study.language} /></Suspense></AppShell>
     <p className="notice" id="notice" role="status" hidden={!notice}>{notice}</p>
   </StudyContext.Provider>;
 }
