@@ -35,7 +35,7 @@ input:disabled, textarea:disabled { background: #f3f5f0; color: #56645b; }
 .app-controls { display: flex; align-items: center; gap: 16px; }
 .account-control { display: flex; gap: 9px; align-items: center; min-height: 44px; color: #566259; font-size: 12px; text-decoration: none; }
 .account-control .icon { background: #e9eee4; box-sizing: content-box; padding: 9px; border-radius: 50%; width: 17px; height: 17px; }
-.app-body main { width: auto; max-width: 1320px; margin: 0 auto; padding: clamp(26px, 3.5vw, 48px) clamp(24px, 3.5vw, 56px) 60px; }
+.app-body main { width: 100%; max-width: none; margin: 0; padding: clamp(26px, 3.5vw, 48px) clamp(24px, 3.5vw, 56px) 60px; }
 .mobile-brand { display: none; }
 .heading { margin-bottom: 28px; }
 .heading .kicker { color: #667a69; }
@@ -43,6 +43,7 @@ input:disabled, textarea:disabled { background: #f3f5f0; color: #56645b; }
 .task, .assessment, .resource, .word-detail, .account-panel { box-shadow: 0 3px 16px #273a251a; border-color: #dce3d7; }
 .task { background: #fff; }
 .session, .account-panel, .progress-board, .library-list, .fold { max-width: 940px; }
+.app-body main[data-page="account"] .account-panel { max-width: none; }
 .library { gap: 24px; }
 .progress-board { margin-bottom: 22px; }
 .notice { background: #243f30; color: white; bottom: 18px; box-shadow: 0 5px 25px #20372126; }

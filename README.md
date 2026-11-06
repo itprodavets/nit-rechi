@@ -48,3 +48,11 @@ npm run dev
 Слова, темы и результаты хранятся в браузере. Записи и история Anki хранятся в IndexedDB. Используй тот же браузер и адрес, чтобы вернуться к данным.
 
 GitHub Actions собирает сайт командой `npm run build` и публикует `dist` на GitHub Pages.
+
+## Dialogue by topic
+
+On **Today → Диалог по теме**, choose an existing or new topic and up to 12 words. **Сегодня / Вчера / За неделю** use actual review timestamps in the imported Anki history, with local calendar-day boundaries; importing a file today does not make its old reviews today's reviews. **Весь словарь** also includes unreviewed words. The same preparation is available under My words → Диалог из повторений.
+
+The dialogue uses exactly the checked words and adds their links to the chosen topic. It has spoken role-play, written alternating turns, original word examples and existing topic dialogues. Written word matching checks only the learner's turns and remains advisory; users explicitly assess each word. Skipped ratings do not change progress. No model API is required: copy the selected topic/words to an external AI chat and bring its `nit-rechi.json` result back through Materials.
+
+Drafts are stored per language and can be resumed or reconfigured without replacing the daily retrieval lesson. Written turns autosave after a short pause or when leaving the field; completion saves the dialogue as a material associated with the topic. Written and spoken outcomes stay separate. The vocabulary workspace uses available desktop width, with stacked word/context/progress sections on smaller screens.

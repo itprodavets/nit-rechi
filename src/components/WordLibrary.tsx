@@ -18,7 +18,6 @@ type ReviewFilter = 'all' | 'reviewed' | 'unreviewed';
 export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportReport; initiallyLatest?: boolean }) {
   const { active, study, practice, update, notify } = useWorkspace();
   const [query, setQuery] = useState('');
-  const [opened, setOpened] = useState(true);
   const [page, setPage] = useState(0);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
   const [onlyLatest, setOnlyLatest] = useState(Boolean(latest && initiallyLatest));
@@ -30,12 +29,12 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
   const [deleting, setDeleting] = useState(false);
   const { language } = study;
   useEffect(() => {
-    if (!opened || !active.words.some(word => word.ankiReviews)) return;
+    if (!active.words.some(word => word.ankiReviews)) return;
     let current = true;
     readReviewSummaries(language).then(value => { if (current) setSummaries(value); },
       () => { if (current) setSummaries(new Map()); });
     return () => { current = false; };
-  }, [active.words, language, opened]);
+  }, [active.words, language]);
 
   const entries = useMemo(() => active.words.map(word => {
     const summary = word.ankiGuid ? summaries.get(reviewKey(language, word.ankiGuid)) : undefined;
@@ -85,9 +84,7 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
     setDeleting(false);
   }
 
-  return <details className="fold word-library" open onToggle={event => setOpened(event.currentTarget.open)}>
-    <summary>Мои слова · {active.words.length}</summary>
-    {opened && <>
+  return <section className="word-library" aria-label="Словарь"><div className="library-heading"><h2>Словарь <span>{active.words.length.toLocaleString('ru')}</span></h2><p className="sub">От узнавания — к свободному использованию</p></div>
       <div className="word-filters">
         <label>Найти слово <input type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} /></label>
         <label>История Anki <select value={reviewFilter} onChange={event => { setReviewFilter(event.target.value as ReviewFilter); setPage(0); }}>
@@ -114,7 +111,8 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
           <button type="button" onClick={() => setConfirm(undefined)}>Отмена</button></div>
       </div>}
       {navigation}
-      <div className="history">{found.slice(start, end).map(({ word, status, summary }) => <div key={word.id}>
+      <div className="vocabulary-columns" aria-hidden="true"><span>Слово / выражение</span><span>Значение и контекст</span><span>Владение словом</span></div>
+      <div className="vocabulary-rows">{found.slice(start, end).map(({ word, status, summary }) => <article className="vocabulary-row" key={word.id}><div className="vocabulary-term">
         {managing ? <label className="choice"><input type="checkbox" checked={selected.has(word.id)} onChange={event => {
           const checked = event.target.checked;
           setSelected(previous => {
@@ -124,10 +122,10 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
           });
         }} /><span lang={word.language}>{word.title}</span></label>
         : <button type="button" onClick={() => practice(word.id)} lang={word.language}>{word.title}</button>}
-        <div><span>{word.meaning}</span><p className="sub">{status.source}</p>
-          {summary && <p className="sub">Anki · «Хорошо» или «Легко» {summary.recalled} из {summary.total}</p>}
+        <small>{word.ankiGuid ? 'Из Anki' : 'Мой словарь'}</small></div>
+        <div className="vocabulary-context"><p>{word.meaning || 'Значение пока не добавлено'}</p>
           <WordExamples word={word} /><AnkiHistory word={word} /></div>
-        <label>Статус · {vocabularyLabels[status.level]} <select aria-label={'Статус · ' + word.title} value={word.vocabularyLevel ?? ''}
+        <div className="vocabulary-progress"><span className={"vocabulary-badge status-" + status.level}>{vocabularyLabels[status.level]}</span><p className="sub">{status.source}</p>{summary && <p className="sub">Anki: {summary.recalled} из {summary.total} «Хорошо» / «Легко»</p>}<label>Уровень владения <select aria-label={'Статус · ' + word.title} value={word.vocabularyLevel ?? ''}
           onChange={event => {
             const value = event.target.value as VocabularyLevel | '';
             update(current => ({ ...current, words: current.words.map(entry => entry.id === word.id
@@ -135,10 +133,9 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
           }}>
           <option value="">Автоматически</option>
           {Object.entries(vocabularyLabels).map(([level, title]) => <option key={level} value={level}>{title}</option>)}
-        </select></label>
-      </div>)}</div>
+        </select></label></div>
+      </article>)}</div>
       {!found.length && <p className="sub">Нет слов по этому фильтру.</p>}
       {lastPage > 0 && navigation}
-    </>}
-  </details>;
+  </section>;
 }

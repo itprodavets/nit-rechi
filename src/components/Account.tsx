@@ -284,7 +284,7 @@ function AnkiImport({ done }: { done: () => void }) {
 }
 
 type Section = 'words' | 'import' | 'reviews';
-const sections: Record<Section, string> = { words: 'Все слова', import: 'Импорт Anki', reviews: 'Повторения' };
+const sections: Record<Section, string> = { words: 'Все слова', import: 'Импорт Anki', reviews: 'Диалог из повторений' };
 
 export function Account() {
   const { study, active, update, notify } = useWorkspace();
@@ -304,11 +304,11 @@ export function Account() {
       {(Object.keys(sections) as Section[]).map(value => <button type="button" key={value} aria-pressed={section === value}
         onClick={() => { setShowLatest(false); open(value); }}>{sections[value]}</button>)}
     </div>
-    <section className="account-panel" aria-label={sections[section]}>
+    <section className={"account-panel account-" + section} aria-label={sections[section]}>
       {section === 'import' && <AnkiImport done={() => { setShowLatest(true); open('words'); }} />}
       {section === 'reviews' && <TodayAnki key={study.language} />}
       {section === 'words' && <>
-        {report && <div className="import-report">
+        {report && <details className="import-report" open={showLatest}><summary><span>Последний импорт</span><strong>{report.file}</strong><span>{report.imported.toLocaleString('ru')} заметок</span></summary><div className="import-report-body">
           <p className="kicker">Последний импорт</p><h2>{report.file}</h2>
           <div className="import-metrics">
             <div><strong>{report.fileNotes}</strong><span>В файле</span></div>
@@ -325,7 +325,7 @@ export function Account() {
               <LanguageLabel code={code} /> · {count}
             </button>)}
           </div>}
-        </div>}
+        </div></details>}
         {active.words.length ? <WordLibrary key={`${study.language}:${report?.id ?? ''}:${showLatest}`}
           latest={report} initiallyLatest={showLatest} /> :
           <div className="empty"><p>В словаре пока нет слов.</p><button type="button" className="primary" onClick={() => open('import')}>Импортировать Anki</button></div>}

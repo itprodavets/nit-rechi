@@ -24,7 +24,7 @@ export function AppShell({ page, children }: { page: Page; children: ReactNode }
         <span className="breadcrumb">Моё пространство <span>/</span> <strong>{pages[page]}</strong></span>
         <div className="app-controls"><LanguageMenu /><a className="account-control" href="#account" aria-current={page === 'account' ? 'page' : undefined} aria-label="Мои слова, импорт и настройки"><Icon name="account" /><span>Мои слова</span></a></div>
       </header>
-      <main id="screen" tabIndex={-1}>{children}</main>
+      <main id="screen" data-page={page} tabIndex={-1}>{children}</main>
     </div>
   </div>;
 }
