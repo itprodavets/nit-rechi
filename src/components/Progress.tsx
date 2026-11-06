@@ -78,12 +78,12 @@ export function Progress() {
         <div className="progress-chart" style={{ gridTemplateColumns: `repeat(${period}, minmax(0, 1fr))` }} aria-hidden="true">
           {points.map((point, index) => <div key={point.date.toISOString()} className="progress-column"
             title={chartDate.format(point.date) + ' · ' + series.map((mode, column) => seriesLabels[mode] + ' ' + point.counts[column].total).join(' · ')}>
-            {point.counts.map(({ total }, column) => <div key={series[column]} className={`progress-fill ${series[column]}`} style={{ height: total / scale * 100 + '%' }} />)}
+            {point.counts.map(({ total }, column) => <div key={series[column]} className={`progress-fill series-${series[column]}`} style={{ height: total / scale * 100 + '%' }} />)}
             {!activity[index] && <div className="progress-zero" />}
           </div>)}
         </div>
         <figcaption className="progress-range"><span>{chartDate.format(dates[0])}</span><span>Пик · {Math.max(...activity)} ответов</span><span>{chartDate.format(dates.at(-1)!)}</span></figcaption>
-        <div className="progress-legend">{series.map(mode => <span key={mode}><i className={`progress-fill ${mode}`} />{seriesLabels[mode]}</span>)}</div>
+        <div className="progress-legend">{series.map(mode => <span key={mode}><i className={`progress-fill series-${mode}`} />{seriesLabels[mode]}</span>)}</div>
       </figure>
       <details className="fold"><summary>Данные по дням</summary>
         <div className="progress-table"><table><thead><tr><th scope="col">День</th>
@@ -102,7 +102,7 @@ export function Progress() {
         const percent = total ? Math.round(success / total * 100) : 0;
         return <div key={mode}>
           <div className="progress-top"><span>{seriesLabels[mode]}</span><strong>{total ? `${percent}% · ${success} из ${total}` : 'Пока нет ответов'}</strong></div>
-          <div className="progress-track" aria-hidden="true"><div className={`progress-fill ${mode}`} style={{ width: percent + '%' }} /></div>
+          <div className="progress-track" aria-hidden="true"><div className={`progress-fill series-${mode}`} style={{ width: percent + '%' }} /></div>
         </div>;
       })}</div>
     </div>
