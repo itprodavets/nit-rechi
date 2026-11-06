@@ -33,7 +33,7 @@ export function TopicCanvas({ topics, selected }: { topics: Topic[]; selected: s
   const labels = new Map(topics.map(topic => [topic.id, topic.title]));
   const edges = topics.flatMap(topic => (topic.connections ?? []).filter(id => positions.has(id)).map(id => ({ from: topic.id, to: id })));
 
-  function select(id: string) {
+  async function select(id: string) {
     if (mode === 'view') { openTopic(id); return; }
     if (mode !== 'connect') return;
     if (!start || start === id) { setStart(start === id ? undefined : id); return; }
@@ -42,7 +42,7 @@ export function TopicCanvas({ topics, selected }: { topics: Topic[]; selected: s
       setStart(undefined);
       return;
     }
-    if (update(current => ({ ...current, topics: current.topics.map(topic => topic.id === start
+    if (await update(current => ({ ...current, topics: current.topics.map(topic => topic.id === start
       ? { ...topic, connections: [...(topic.connections ?? []), id] } : topic) }))) setStart(undefined);
   }
 

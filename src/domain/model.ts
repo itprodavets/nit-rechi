@@ -16,6 +16,7 @@ export interface Word {
   ankiGuid?: string;
   ankiReviews?: number;
   ankiUpdatedAt?: number;
+  ankiImportId?: string;
   vocabularyLevel?: VocabularyLevel;
 }
 
@@ -58,6 +59,18 @@ export interface PracticeResult {
 export type DailyWord = { wordId: string; lapses: number; fromReview?: true };
 export type DailySpeech = { date: string; targets: DailyWord[]; answers: Partial<Record<string, Outcome>> };
 
+export interface AnkiImportReport {
+  id: string;
+  file: string;
+  fileNotes: number;
+  selected: number;
+  imported: number;
+  added: number;
+  withReviews: number;
+  newReviews: number;
+  languages?: Record<string, number>;
+}
+
 export interface Study {
   language: string;
   languages: Record<string, object>;
@@ -65,6 +78,7 @@ export interface Study {
   topics: Topic[];
   resources: Resource[];
   results: Record<string, PracticeResult>;
+  ankiImports?: Record<string, AnkiImportReport>;
   dailySpeech?: Record<string, DailySpeech>;
   practiceDays?: Record<string, Record<string, Partial<Record<PracticeMode, PracticeCounts>>>>;
 }
@@ -82,7 +96,6 @@ export const kinds: Record<MaterialKind, { label: string; action: string; prompt
   media: { label: 'Аудио или видео', action: 'Обсудить', prompt: 'Расскажи, что ты понял, и прокомментируй одну мысль.' }
 };
 
-const storageKey = 'nit-rechi-v1';
 const day = 86_400_000;
 const names = new Intl.DisplayNames(['ru'], { type: 'language' });
 const dates = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long' });
@@ -93,16 +106,6 @@ export const normalize = (value: string, language: string) => value.normalize('N
 export const wordId = (language: string, title: string, meaning: string) =>
   JSON.stringify([language, 'word', normalize(title, language), normalize(meaning, language)]);
 export const topicMaterials = (topic: Topic) => topic.materials ?? (topic.material ? [{ format: 'Материал', text: topic.material }] : []);
-
-export function readStudy(): Study {
-  const saved = localStorage.getItem(storageKey);
-  if (saved) return { resources: [], ...JSON.parse(saved) };
-  return { language: 'en', languages: { en: {} }, words: [], topics: [], resources: [], results: {} };
-}
-
-export function writeStudy(study: Study) {
-  localStorage.setItem(storageKey, JSON.stringify(study));
-}
 
 export function selectLanguage(study: Study, language: string): Study {
   return { ...study, language, languages: { ...study.languages, [language]: study.languages[language] ?? {} } };

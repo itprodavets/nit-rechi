@@ -53,7 +53,7 @@ export function TodayAnki() {
   const words = active.words.filter(word => word.ankiGuid && keys?.has(reviewKey(language, word.ankiGuid)));
   const chosen = words.filter(word => selection.has(word.id)).map(word => word.id);
 
-  function train() {
+  async function train() {
     if (!chosen.length) return;
     const existing = active.topics.find(topic => topic.id === topicId);
     const topic: Topic = existing ?? {
@@ -61,7 +61,7 @@ export function TodayAnki() {
       prompt: 'Представь, что ты в офисе. Опиши рабочую ситуацию, используя слова из темы.'
     };
     const links = [...new Set([...topic.links, ...chosen])];
-    if (update(current => ({ ...current, topics: upsert(current.topics, { ...topic, links }) }))) {
+    if (await update(current => ({ ...current, topics: upsert(current.topics, { ...topic, links }) }))) {
       notify('Слова в теме «' + topic.title + '» · ' + chosen.length);
       practice(topic.id);
     }

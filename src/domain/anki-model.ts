@@ -31,10 +31,11 @@ export function suggestColumns(names: string[], count: number): Columns {
   return [word + 1, meaning + 1, example + 1];
 }
 
-export function archiveWords(notes: ArchiveNote[], language: string, columns: Columns) {
+export function archiveWords(notes: ArchiveNote[], languageFor: (note: ArchiveNote) => string, columns: Columns) {
   return notes.flatMap(note => {
     const [title, meaning, example] = columns.map(column => column > 0 ? cleanField(note.fields[column - 1], note.html ?? true) : '');
     if (!title) return [];
+    const language = languageFor(note);
     const id = note.guid ? JSON.stringify([language, 'guid', note.guid]) : wordId(language, title, meaning);
     const word: Word = { id, language, title, meaning, example, ankiGuid: note.guid || undefined, ankiReviews: note.reviews.length };
     return [{ word, reviews: note.reviews }];

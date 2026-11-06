@@ -83,20 +83,20 @@ export function DailyPractice({ children }: { children: ReactNode }) {
   const loading = !session && hasAnki && !lapses && !error;
   const target = pending[0];
 
-  function start() {
+  async function start() {
     if (!target || loading) return;
-    if (!session && !update(current => ({
+    if (!session && !await update(current => current.dailySpeech?.[current.language]?.date === date ? current : ({
       ...current, dailySpeech: { ...current.dailySpeech, [current.language]: { date, targets, answers: {} } }
     }))) return;
     setOpen(true);
   }
 
-  function save(answer: Outcome) {
+  async function save(answer: Outcome) {
     if (!target) return;
     const now = Date.now();
     const today = localDay(now);
     if (today !== date) { setDate(today); setOpen(false); return; }
-    if (update(current => {
+    if (await update(current => {
       const daily = current.dailySpeech?.[current.language];
       if (!daily || daily.date !== date || daily.answers[target.wordId]) return current;
       const next = assess(current, target.wordId, answer, now, 'spoken');

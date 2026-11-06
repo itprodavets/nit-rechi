@@ -2,7 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useS
 import { createRoot } from 'react-dom/client';
 import { LanguageMenu } from './components/Language';
 import { StudyContext } from './context';
-import { itemsForLanguage, pages, readStudy, writeStudy } from './domain/model';
+import { itemsForLanguage, pages } from './domain/model';
+import { readStudy, writeStudy } from './domain/study-storage';
 import type { Page, Study } from './domain/model';
 import { stopVoice } from './domain/voice.js';
 import './styles.css';
@@ -29,6 +30,7 @@ function go(page: Page) {
 function App({ initial }: { initial: Study }) {
   const [study, setStudy] = useState(initial);
   const latest = useRef(study);
+  const writes = useRef(Promise.resolve());
   const [notice, notify] = useState('');
   const [practiceId, setPractice] = useState<string>();
   const [topicId, setTopic] = useState<string>();
@@ -46,16 +48,21 @@ function App({ initial }: { initial: Study }) {
   }, []);
 
   const update = useCallback((change: (current: Study) => Study) => {
-    const next = change(latest.current);
-    try {
-      writeStudy(next);
-      latest.current = next;
-      setStudy(next);
-      return true;
-    } catch {
-      notify('Не удалось сохранить изменения. Проверь доступное место в браузере.');
-      return false;
-    }
+    const pending = writes.current.then(async () => {
+      const next = change(latest.current);
+      if (next === latest.current) return true;
+      try {
+        await writeStudy(next);
+        latest.current = next;
+        setStudy(next);
+        return true;
+      } catch {
+        notify('Не удалось сохранить изменения. Проверь доступное место в браузере.');
+        return false;
+      }
+    });
+    writes.current = pending.then(() => {}, () => {});
+    return pending;
   }, []);
   const practice = (id: string) => { setPractice(id); go('practice'); };
   const openTopic = (id: string) => { setTopic(id); go('map'); };
@@ -76,5 +83,7 @@ function App({ initial }: { initial: Study }) {
 }
 
 const root = createRoot(document.querySelector('#root')!);
-try { root.render(<App initial={readStudy()} />); }
-catch { root.render(<main role="alert">Не удалось прочитать локальное хранилище. Открой приложение в обычном окне браузера.</main>); }
+root.render(<main role="status">Открываем локальный словарь…</main>);
+void readStudy().then(initial => root.render(<App initial={initial} />), () => {
+  root.render(<main role="alert">Не удалось прочитать локальное хранилище. Открой приложение в обычном окне браузера.</main>);
+});

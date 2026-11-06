@@ -4,7 +4,7 @@ import { deleteReviewKeys, readReviewSummaries } from '../domain/anki-history';
 import type { ReviewSummary } from '../domain/anki-history';
 import { reviewKey } from '../domain/anki-model';
 import { languageName, normalize } from '../domain/model';
-import type { VocabularyLevel } from '../domain/model';
+import type { AnkiImportReport, VocabularyLevel } from '../domain/model';
 import { removeWords, vocabularyLabels, vocabularyStatus } from '../domain/vocabulary';
 import { deleteTakes } from '../domain/voice.js';
 import { AnkiHistory } from './AnkiHistory';
@@ -12,11 +12,16 @@ import { WordExamples } from './WordExamples';
 
 type Filter = 'all' | VocabularyLevel;
 
-export function WordLibrary() {
+const pageSize = 30;
+type ReviewFilter = 'all' | 'reviewed' | 'unreviewed';
+
+export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportReport; initiallyLatest?: boolean }) {
   const { active, study, practice, update, notify } = useWorkspace();
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState(true);
-  const [limit, setLimit] = useState(30);
+  const [page, setPage] = useState(0);
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
+  const [onlyLatest, setOnlyLatest] = useState(Boolean(latest && initiallyLatest));
   const [filter, setFilter] = useState<Filter>('all');
   const [summaries, setSummaries] = useState(new Map<string, ReviewSummary>());
   const [managing, setManaging] = useState(false);
@@ -36,16 +41,31 @@ export function WordLibrary() {
     const summary = word.ankiGuid ? summaries.get(reviewKey(language, word.ankiGuid)) : undefined;
     return { word, summary, status: vocabularyStatus(word, study.results[word.id], summary) };
   }), [active.words, language, study.results, summaries]);
+  const scoped = useMemo(() => entries.filter(({ word }) =>
+    (!onlyLatest || word.ankiImportId === latest?.id) &&
+    (reviewFilter === 'all' || Boolean(word.ankiReviews) === (reviewFilter === 'reviewed'))),
+    [entries, latest?.id, onlyLatest, reviewFilter]);
   const counts = useMemo(() => {
-    const result = { all: entries.length, learning: 0, passive: 0, active: 0 };
-    for (const entry of entries) result[entry.status.level]++;
+    const result = { all: scoped.length, learning: 0, passive: 0, active: 0 };
+    for (const entry of scoped) result[entry.status.level]++;
     return result;
-  }, [entries]);
+  }, [scoped]);
   const found = useMemo(() => {
     const search = normalize(query, language);
-    return entries.filter(({ word, status }) => (filter === 'all' || status.level === filter) &&
+    return scoped.filter(({ word, status }) => (filter === 'all' || status.level === filter) &&
       (!search || normalize(word.title + ' ' + word.meaning, language).includes(search)));
-  }, [entries, filter, language, query]);
+  }, [scoped, filter, language, query]);
+  const lastPage = Math.max(0, Math.ceil(found.length / pageSize) - 1);
+  const currentPage = Math.min(lastPage, page);
+  const start = currentPage * pageSize;
+  const end = Math.min(start + pageSize, found.length);
+  const navigation = <div className="word-pagination" role="group" aria-label="Страницы словаря">
+    <p className="sub">{found.length ? `Показано ${start + 1}–${end} из ${found.length}` : 'Показано 0 слов'}</p>
+    {lastPage > 0 && <div className="actions">
+      <button type="button" disabled={!currentPage} onClick={() => setPage(currentPage - 1)}>← Назад</button>
+      <button type="button" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Дальше →</button>
+    </div>}
+  </div>;
   const toDelete = confirm === 'all' ? active.words : active.words.filter(word => selected.has(word.id));
 
   async function clear() {
@@ -54,7 +74,7 @@ export function WordLibrary() {
     const remainingKeys = new Set(study.words.flatMap(word => !ids.has(word.id) && word.ankiGuid ? [reviewKey(word.language, word.ankiGuid)] : []));
     const reviews = [...new Set(toDelete.flatMap(word => word.ankiGuid ? [reviewKey(word.language, word.ankiGuid)] : []))]
       .filter(key => !remainingKeys.has(key));
-    if (!update(current => removeWords(current, ids))) return;
+    if (!await update(current => removeWords(current, ids))) return;
     setDeleting(true);
     setSelected(new Set());
     setConfirm(undefined);
@@ -68,11 +88,19 @@ export function WordLibrary() {
   return <details className="fold word-library" open onToggle={event => setOpened(event.currentTarget.open)}>
     <summary>Мои слова · {active.words.length}</summary>
     {opened && <>
+      <div className="word-filters">
+        <label>Найти слово <input type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} /></label>
+        <label>История Anki <select value={reviewFilter} onChange={event => { setReviewFilter(event.target.value as ReviewFilter); setPage(0); }}>
+          <option value="all">С историей и без неё</option><option value="reviewed">С повторениями</option><option value="unreviewed">Без повторений</option>
+        </select></label>
+      </div>
+      {latest && <label className="latest-filter"><input type="checkbox" checked={onlyLatest} onChange={event => {
+        setOnlyLatest(event.target.checked); setFilter('all'); setPage(0);
+      }} /> Слова из последнего файла</label>}
       <div className="actions" aria-label="Словари">
         {(['all', 'learning', 'passive', 'active'] as const).map(value => <button key={value} type="button" aria-pressed={filter === value}
-          onClick={() => { setFilter(value); setLimit(30); }}>{value === 'all' ? 'Все' : vocabularyLabels[value]} · {counts[value]}</button>)}
+          onClick={() => { setFilter(value); setPage(0); }}>{value === 'all' ? 'Все' : vocabularyLabels[value]} · {counts[value]}</button>)}
       </div>
-      <label>Найти слово <input type="search" value={query} onChange={event => { setQuery(event.target.value); setLimit(30); }} /></label>
       <button type="button" onClick={() => { setManaging(!managing); setConfirm(undefined); setSelected(new Set()); }}>
         {managing ? 'Готово' : 'Управлять словами'}
       </button>
@@ -85,7 +113,8 @@ export function WordLibrary() {
         <div className="actions"><button type="button" onClick={clear}>Подтвердить удаление</button>
           <button type="button" onClick={() => setConfirm(undefined)}>Отмена</button></div>
       </div>}
-      <div className="history">{found.slice(0, limit).map(({ word, status, summary }) => <div key={word.id}>
+      {navigation}
+      <div className="history">{found.slice(start, end).map(({ word, status, summary }) => <div key={word.id}>
         {managing ? <label className="choice"><input type="checkbox" checked={selected.has(word.id)} onChange={event => {
           const checked = event.target.checked;
           setSelected(previous => {
@@ -109,7 +138,7 @@ export function WordLibrary() {
         </select></label>
       </div>)}</div>
       {!found.length && <p className="sub">Нет слов по этому фильтру.</p>}
-      {found.length > limit && <button type="button" onClick={() => setLimit(value => value + 30)}>Показать ещё · {limit} из {found.length}</button>}
+      {lastPage > 0 && navigation}
     </>}
   </details>;
 }

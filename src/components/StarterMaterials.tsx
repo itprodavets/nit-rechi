@@ -23,8 +23,8 @@ export function StarterMaterials() {
       <SourceText text={resource.text} language={resource.language} glossary={glossary} />
       <Fold title="Перевод на русский"><p className="source-text" lang="ru">{resource.translation}</p></Fold>
       <div className="actions">
-        <button type="button" className="primary" onClick={() => {
-          if (update(current => current.resources.some(entry => entry.id === resource.id)
+        <button type="button" className="primary" onClick={async () => {
+          if (await update(current => current.resources.some(entry => entry.id === resource.id)
             ? current : { ...current, resources: upsert(current.resources, resource) })) practice(resource.id);
         }}>В практику</button>
         <a className="resource-link" href={source.url} target="_blank" rel="noopener noreferrer">{source.title} ↗</a>

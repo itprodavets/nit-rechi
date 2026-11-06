@@ -5,7 +5,7 @@ export interface Workspace {
   study: Study;
   active: ReturnType<typeof itemsForLanguage>;
   notify: (text: string) => void;
-  update: (change: (study: Study) => Study) => boolean;
+  update: (change: (study: Study) => Study) => Promise<boolean>;
   go: (page: Page) => void;
   practice: (id: string) => void;
   openTopic: (id: string) => void;

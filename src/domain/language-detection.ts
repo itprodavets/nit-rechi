@@ -1,11 +1,11 @@
 const languageHints: Record<string, RegExp> = {
-  en: /\b(english|английский|the|you|could|will|with|meeting|please|from|this|would)\b|английск/i,
+  en: /\b(english|american|oxford|английский|the|you|could|will|with|meeting|please|from|this|would)\b|английск/i,
   es: /\b(español|spanish|hola|gracias|usted|pero|quiero|buenos|para|tienes|nosotros|está)\b|испанск/i,
   fr: /\b(french|français|bonjour|merci|vous|pour|avec|suis|nous|dans|cette|est)\b|французск/i,
   de: /\b(german|deutsch|danke|bitte|ich|nicht|mit|guten|und|oder|sind|eine)\b|немецк/i,
   pt: /\b(portuguese|português|obrigado|você|não|bom dia|vocês|comigo|também)\b|португальск/i,
   it: /\b(italian|italiano|grazie|buongiorno|voglio|siamo|della|abbiamo|anche|perché)\b|итальянск/i,
-  zh: /\b(chinese|mandarin|hanzi)\b|中文|普通话|китайск/i,
+  zh: /\b(chinese|mandarin|hanzi|hsk[1-9]?)\b|中文|普通话|китайск/i,
   ja: /\b(japanese|nihongo|kanji)\b|日本語|японск/i,
   ko: /\b(korean)\b|한국어|корейск/i,
   ru: /\b(russian)\b|русский/i

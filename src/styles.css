@@ -365,3 +365,28 @@ button:disabled { opacity: .52; cursor: default; }
 .word-cue { margin: 0 0 16px; padding: 12px 15px; border: 1px solid #4b665a; border-radius: 10px; background: #12231d; }
 .word-cue > .source-text { margin-top: 3px; }
 .daily-session .word-cue { margin-top: 12px; }
+
+.account-sections { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.account-sections button[aria-pressed="true"] { background: #2b4438; }
+.account-panel { max-width: 860px; margin-bottom: 16px; padding: clamp(12px, 3vw, 25px); border: 1px solid #40574b; border-radius: 14px; background: var(--panel); min-width: 0; }
+.account-panel .today-anki { padding: 0; border: 0; }
+.anki-import { gap: 14px; padding: 0; }
+.import-step { display: grid; gap: 10px; min-width: 0; padding: clamp(12px, 2.6vw, 22px); border: 1px solid #3f574a; border-radius: 11px; background: #14241e; }
+.import-step h3 { margin: 0; }
+.import-step > button { justify-self: start; }
+.file-field input::file-selector-button { margin-inline-end: 10px; padding: 7px 11px; border: 1px solid #466858; border-radius: 6px; color: var(--mint); background: #233c30; cursor: pointer; }
+.file-name, .import-report h2 { overflow-wrap: anywhere; }
+.import-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(110px, 100%), 1fr)); gap: 7px; }
+.import-metrics > div { padding: 8px 11px; border: 1px solid #40594c; border-radius: 8px; background: #1d3028; }
+.import-metrics strong, .import-metrics span { display: block; }
+.import-metrics strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.import-metrics span { color: var(--muted); font-size: .84rem; }
+.import-report { display: grid; gap: 8px; margin-bottom: 16px; }
+.import-report h2 { font-size: 1rem; }
+.import-options { padding-bottom: 7px; }
+.import-options > label { margin-bottom: 9px; }
+.word-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 8px; margin-bottom: 10px; }
+.latest-filter { display: flex; align-items: center; gap: 8px; min-height: 38px; }
+.latest-filter input { width: auto; accent-color: var(--mint); }
+.word-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0; }
+.import-language-count { display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 7px; }
