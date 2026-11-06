@@ -277,10 +277,10 @@ button:disabled { opacity: .52; cursor: default; }
 .progress-column > div { width: 100%; max-width: 48px; }
 .progress-zero { height: 2px; background: #50675c; }
 .progress-fill { background: var(--series); }
-.progress-fill.anki { --series: #8db8e9; }
-.progress-fill.spoken { --series: #a3dfbc; }
-.progress-fill.choice { --series: #cfbaf0; }
-.progress-fill.written { --series: #edc08b; }
+.progress-fill.series-anki { --series: #8db8e9; }
+.progress-fill.series-spoken { --series: #a3dfbc; }
+.progress-fill.series-choice { --series: #cfbaf0; }
+.progress-fill.series-written { --series: #edc08b; }
 .progress-range, .progress-legend { display: flex; flex-wrap: wrap; gap: 8px 13px; margin-top: 7px; color: var(--muted); font-size: .82rem; }
 .progress-range { justify-content: space-between; }
 .progress-legend i { display: inline-block; width: .75em; height: .75em; margin-right: 5px; border-radius: 2px; }
