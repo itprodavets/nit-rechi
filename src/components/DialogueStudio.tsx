@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useSavedDraft } from '../hooks/useSavedDraft';
 import { useWorkspace } from '../context';
 import { dialogueWords, finishDialogue, saveDialogueDraft } from '../domain/dialogue-session';
 import type { DialogueDraft, DialogueSession } from '../domain/dialogue-session';
@@ -15,10 +16,7 @@ import { Icon } from './Icon';
 
 function DialogueWorkspace({ session, edit }: { session: DialogueSession; edit: () => void }) {
   const { study, active, update, notify } = useWorkspace();
-  const [draft, setDraft] = useState(session.draft);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
-  const [saved, setSaved] = useState(true);
+  const { draft, setDraft, saved, flush: persist } = useSavedDraft(session.draft, value => update(current => saveDialogueDraft(current, session.id, value, session.language)));
   const [busy, setBusy] = useState(false);
   const [ratings, setRatings] = useState<Record<string, Outcome>>({});
   const [reviewing, setReviewing] = useState(false);
@@ -31,23 +29,6 @@ function DialogueWorkspace({ session, edit }: { session: DialogueSession; edit: 
   const ownText = draft.lines.filter((_, index) => index % 2 === 1).join('\n');
   const inspection = inspectSpeech(ownText, words.map(word => word.title), session.language);
   const answered = draft.mode === 'spoken' ? draft.performed : Boolean(ownText.trim());
-  const signature = JSON.stringify(draft);
-  const persisted = useRef(JSON.stringify(session.draft));
-  async function persist(value: DialogueDraft) {
-    const signature = JSON.stringify(value);
-    const ok = await update(current => saveDialogueDraft(current, session.id, value, session.language));
-    if (ok) { persisted.current = signature; if (JSON.stringify(draftRef.current) === signature) setSaved(true); }
-    return ok;
-  }
-  useEffect(() => {
-    if (signature === persisted.current) return;
-    setSaved(false);
-    const timer = window.setTimeout(() => { void persist(draftRef.current); }, 700);
-    return () => clearTimeout(timer);
-  }, [signature]);
-  useEffect(() => () => {
-    if (JSON.stringify(draftRef.current) !== persisted.current) void update(current => saveDialogueDraft(current, session.id, draftRef.current, session.language));
-  }, [session.id, session.language, update]);
   function change(next: DialogueDraft) { setDraft(next); setReviewing(false); setRatings({}); }
   async function showHints() {
     const next = { ...draft, hint: true };
@@ -83,7 +64,7 @@ function DialogueWorkspace({ session, edit }: { session: DialogueSession; edit: 
         <label className="manual-confirm"><input type="checkbox" checked={draft.performed} onChange={event => change({ ...draft, performed: event.target.checked })} />Я разыграл разговор вслух</label></div>
         : <><p className="sub conversation-help">Напиши обе роли сам или вставь реплики из своего ИИ-чата. Проверка ищет слова только в твоих ответах.</p>
           <div className="dialogue-turns">{draft.lines.map((line, index) => <label key={index} className={index % 2 ? 'dialogue-turn own-turn' : 'dialogue-turn'}><span>{index % 2 ? 'Ты' : 'Собеседник'} <small>· {Math.floor(index / 2) + 1}</small></span>
-            <textarea rows={2} value={line} lang={session.language} maxLength={2000} disabled={busy} placeholder={index === 0 ? 'Начните разговор…' : index % 2 ? 'Твой ответ с выбранными словами…' : 'Вопрос или ответ собеседника…'} onChange={event => change({ ...draft, lines: draft.lines.map((value, at) => at === index ? event.target.value : value) })} onBlur={() => { if (JSON.stringify(draft) !== persisted.current) void persist(draft); }} /></label>)}</div>
+            <textarea rows={2} value={line} lang={session.language} maxLength={2000} disabled={busy} placeholder={index === 0 ? 'Начните разговор…' : index % 2 ? 'Твой ответ с выбранными словами…' : 'Вопрос или ответ собеседника…'} onChange={event => change({ ...draft, lines: draft.lines.map((value, at) => at === index ? event.target.value : value) })} onBlur={() => { void persist(draft); }} /></label>)}</div>
           {draft.lines.length < 12 && <button type="button" className="subtle" onClick={() => change({ ...draft, lines: [...draft.lines, '', ''] })}>+ Ещё две реплики</button>}
         </>}
       {!reviewing && <button type="button" className="primary dialogue-review" disabled={!answered || busy} onClick={() => void review()}>Подвести итог <Icon name="arrow" /></button>}

@@ -7,6 +7,8 @@ import { languageName, normalize } from '../domain/model';
 import type { AnkiImportReport, VocabularyLevel } from '../domain/model';
 import { removeWords, vocabularyLabels, vocabularyStatus } from '../domain/vocabulary';
 import { deleteTakes } from '../domain/voice.js';
+import { matchesDeck, wordDeckLabel } from '../domain/anki-decks';
+import { DeckFilter } from './DeckFilter';
 import { AnkiHistory } from './AnkiHistory';
 import { WordExamples } from './WordExamples';
 
@@ -17,6 +19,7 @@ type ReviewFilter = 'all' | 'reviewed' | 'unreviewed';
 
 export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportReport; initiallyLatest?: boolean }) {
   const { active, study, practice, update, notify } = useWorkspace();
+  const [deck, setDeck] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
@@ -41,9 +44,9 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
     return { word, summary, status: vocabularyStatus(word, study.results[word.id], summary) };
   }), [active.words, language, study.results, summaries]);
   const scoped = useMemo(() => entries.filter(({ word }) =>
-    (!onlyLatest || word.ankiImportId === latest?.id) &&
+    matchesDeck(word, deck) && (!onlyLatest || word.ankiImportId === latest?.id) &&
     (reviewFilter === 'all' || Boolean(word.ankiReviews) === (reviewFilter === 'reviewed'))),
-    [entries, latest?.id, onlyLatest, reviewFilter]);
+    [entries, latest?.id, onlyLatest, reviewFilter, deck]);
   const counts = useMemo(() => {
     const result = { all: scoped.length, learning: 0, passive: 0, active: 0 };
     for (const entry of scoped) result[entry.status.level]++;
@@ -85,12 +88,13 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
   }
 
   return <section className="word-library" aria-label="Словарь"><div className="library-heading"><h2>Словарь <span>{active.words.length.toLocaleString('ru')}</span></h2><p className="sub">От узнавания — к свободному использованию</p></div>
-      <div className="word-filters">
+      <div className="word-filters"><DeckFilter words={active.words} value={deck} onChange={value => { setDeck(value); setPage(0); setSelected(new Set()); }} />
         <label>Найти слово <input type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} /></label>
         <label>История Anki <select value={reviewFilter} onChange={event => { setReviewFilter(event.target.value as ReviewFilter); setPage(0); }}>
           <option value="all">С историей и без неё</option><option value="reviewed">С повторениями</option><option value="unreviewed">Без повторений</option>
         </select></label>
       </div>
+      {active.words.some(word => word.ankiGuid && !word.ankiDecks?.length) && <p className="sub">В старом импорте названия колод не сохранялись. Импортируй тот же архив ещё раз, чтобы восстановить разделение. Свои примеры и прогресс сохранятся.</p>}
       {latest && <label className="latest-filter"><input type="checkbox" checked={onlyLatest} onChange={event => {
         setOnlyLatest(event.target.checked); setFilter('all'); setPage(0);
       }} /> Слова из последнего файла</label>}
@@ -122,7 +126,7 @@ export function WordLibrary({ latest, initiallyLatest }: { latest?: AnkiImportRe
           });
         }} /><span lang={word.language}>{word.title}</span></label>
         : <button type="button" onClick={() => practice(word.id)} lang={word.language}>{word.title}</button>}
-        <small>{word.ankiGuid ? 'Из Anki' : 'Мой словарь'}</small></div>
+        <small>{wordDeckLabel(word)}</small></div>
         <div className="vocabulary-context"><p>{word.meaning || 'Значение пока не добавлено'}</p>
           <WordExamples word={word} /><AnkiHistory word={word} /></div>
         <div className="vocabulary-progress"><span className={"vocabulary-badge status-" + status.level}>{vocabularyLabels[status.level]}</span><p className="sub">{status.source}</p>{summary && <p className="sub">Anki: {summary.recalled} из {summary.total} «Хорошо» / «Легко»</p>}<label>Уровень владения <select aria-label={'Статус · ' + word.title} value={word.vocabularyLevel ?? ''}

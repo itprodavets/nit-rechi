@@ -1,6 +1,6 @@
 import { cleanField } from './text-import.js';
-import { normalize, wordId } from './model';
-import type { Study, Word } from './model';
+import { normalize, wordId } from './model.ts';
+import type { Study, Word } from './model.ts';
 
 export type Review = [at: number, card: number, rating: number, interval: number, duration: number];
 export type Columns = [word: number, meaning: number, example: number];
@@ -31,13 +31,15 @@ export function suggestColumns(names: string[], count: number): Columns {
   return [word + 1, meaning + 1, example + 1];
 }
 
-export function archiveWords(notes: ArchiveNote[], languageFor: (note: ArchiveNote) => string, columns: Columns) {
+export function archiveWords(notes: ArchiveNote[], languageFor: (note: ArchiveNote) => string, columns: Columns, decks: Archive['decks'] = {}) {
   return notes.flatMap(note => {
     const [title, meaning, example] = columns.map(column => column > 0 ? cleanField(note.fields[column - 1], note.html ?? true) : '');
     if (!title) return [];
     const language = languageFor(note);
-    const id = note.guid ? JSON.stringify([language, 'guid', note.guid]) : wordId(language, title, meaning);
-    const word: Word = { id, language, title, meaning, example, ankiGuid: note.guid || undefined, ankiReviews: note.reviews.length };
+    const id = note.guid ? JSON.stringify([language, 'guid', note.guid]) : note.deckIds.length
+      ? JSON.stringify([language, 'deck-word', [...note.deckIds].sort(), normalize(title, language), normalize(meaning, language)])
+      : wordId(language, title, meaning);
+    const word: Word = { id, language, title, meaning, example, ankiGuid: note.guid || undefined, ankiDecks: note.deckIds.map(id => ({ id, name: decks[id] ?? 'Колода ' + id })), ankiReviews: note.reviews.length };
     return [{ word, reviews: note.reviews }];
   });
 }
@@ -48,7 +50,7 @@ export function mergeImportedWords(study: Study, incoming: Word[]) {
   const byGuid = new Map<string, Word>();
   for (const word of study.words) {
     if (word.ankiGuid) byGuid.set(reviewKey(word.language, word.ankiGuid), word);
-    else ordinary.set(wordId(word.language, word.title, word.meaning), word);
+    else if (!word.ankiDecks?.length) ordinary.set(wordId(word.language, word.title, word.meaning), word);
   }
   for (const word of incoming) {
     const match = word.ankiGuid ? byGuid.get(reviewKey(word.language, word.ankiGuid))
@@ -59,6 +61,7 @@ export function mergeImportedWords(study: Study, incoming: Word[]) {
       meaning: word.meaning || previous?.meaning || '',
       example: word.example || previous?.example || '',
       ankiGuid: word.ankiGuid ?? previous?.ankiGuid,
+      ankiDecks: word.ankiDecks?.length ? word.ankiDecks : previous?.ankiDecks,
       ankiReviews: Math.max(previous?.ankiReviews ?? 0, word.ankiReviews ?? 0) || undefined
     };
     byId.set(merged.id, merged);

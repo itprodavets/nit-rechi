@@ -1,4 +1,5 @@
-import type { Topic } from './model';
+import type { Study, Topic } from './model';
+import { starterStories, storyPrompts, officeStory, officePrompt } from './starter-stories.ts';
 
 const situations = [
   ['home', 'Дома', 'Расскажи, что ты обычно делаешь дома после работы.'],
@@ -38,8 +39,31 @@ export function starterTopics(language: string): Topic[] {
     id: 'starter:' + language + ':' + id,
     language,
     title: localized?.[index]?.[0] ?? title,
-    prompt,
+    prompt: storyPrompts[index] ?? prompt,
     links: [],
-    materials: localized ? [{ format: 'Пример ответа', text: localized[index][1] }] : []
+    materials: localized ? [{ format: 'Пример рассказа · вымышленная ситуация', text: starterStories[language.split('-')[0]][index] }] : []
   }));
+}
+
+export function upgradeStarterTopics(study: Study): Study {
+  let changed = false;
+  const topics = study.topics.map(topic => {
+    const index = situations.findIndex(([id]) => topic.id === 'starter:' + topic.language + ':' + id);
+    if (index < 0) {
+      if (topic.id !== 'sample-office' || topic.language !== 'en') return topic;
+      const prompt = topic.prompt === 'Представь разговор с коллегой. Расскажи о своём рабочем дне в 2–3 фразах.' ? officePrompt : topic.prompt;
+      const oldMaterial = !topic.materials && topic.material === 'I overslept, so I’m running late. Could we reschedule our call for after lunch?';
+      if (prompt === topic.prompt && !oldMaterial) return topic;
+      changed = true;
+      return { ...topic, prompt, ...(oldMaterial ? { material: undefined, materials: [{ format: 'Пример рассказа · вымышленная ситуация', text: officeStory }] } : {}) };
+    }
+    const example = starterTopics(topic.language)[index];
+    const legacy = content[topic.language.split('-')[0]]?.[index]?.[1];
+    const prompt = topic.prompt === situations[index][2] ? example.prompt : topic.prompt;
+    const materials = topic.materials?.map(material => material.format === 'Пример ответа' && material.text === legacy ? example.materials![0] : material);
+    if (prompt === topic.prompt && (!materials || materials.every((entry, i) => entry === topic.materials![i]))) return topic;
+    changed = true;
+    return { ...topic, prompt, ...(materials ? { materials } : {}) };
+  });
+  return changed ? { ...study, topics } : study;
 }

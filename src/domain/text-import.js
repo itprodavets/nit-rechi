@@ -49,12 +49,18 @@ export function readAnkiText(text) {
   const hasHeader = !headers.columns && /^(word|term|front|слово|выражение)$/i.test(rows[0]?.[0] ?? '') &&
     /^(meaning|translation|back|перевод|значение)$/i.test(rows[0]?.[1] ?? '');
   const names = (headers.columns ? separatedRows(headers.columns, separator)[0] : hasHeader ? rows.shift() : []) ?? [];
+  const deckColumn = Number(headers['deck column'] || headers['deck-column']) - 1;
+  const decks = {};
   return {
-    decks: {},
+    decks,
     types: { text: names.filter((_, index) => !excluded.has(index)) },
-    notes: rows.map(row => ({
-      guid: row[guid]?.trim() || '', typeId: 'text', deckIds: [], reviews: [],
+    notes: rows.map(row => {
+      const name = row[deckColumn]?.trim();
+      const deckId = name ? 'text:' + name : undefined;
+      if (deckId) decks[deckId] = name;
+      return ({
+      guid: row[guid]?.trim() || '', typeId: 'text', deckIds: deckId ? [deckId] : [], reviews: [],
       fields: row.filter((_, index) => !excluded.has(index)), html: headers.html === 'true'
-    }))
+    }); })
   };
 }

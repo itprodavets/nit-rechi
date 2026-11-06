@@ -78,7 +78,7 @@ function TopicEditor({ entry, finish }: { entry?: Topic; finish: (id: string) =>
 
   return <form onSubmit={submit}>
     <label>Ситуация <input name="title" required maxLength={90} defaultValue={entry?.title} placeholder="Я в офисе" /></label>
-    <label>Что сказать вслух <textarea name="prompt" rows={2} defaultValue={entry?.prompt} placeholder="Попроси перенести встречу и предложи время" /></label>
+    <label>Что сказать вслух <textarea name="prompt" rows={2} defaultValue={entry?.prompt} placeholder="Вспомни конкретную ситуацию: что произошло и как ты поступил" /></label>
     {active.words.length > 0 && <fieldset><legend>Слова и контекст из Anki · выбрано {chosen.size}</legend>
       <label>Поиск по колоде <input type="search" value={query} onChange={event => { setQuery(event.target.value); setLimit(30); }} placeholder="Слово или фраза" /></label>
       <div className="choices">{found.slice(0, limit).map(word =>
@@ -124,7 +124,7 @@ function StarterMap() {
     <div className="word-detail">
       <h2 lang={topic.language}>{topic.title}</h2>
       <p>{topic.prompt}</p>
-      {topicMaterials(topic).map(material => <SourceText key={material.text} text={material.text} language={topic.language} />)}
+      {topicMaterials(topic).map(material => <div key={material.text}><p className="kicker">{material.format}</p><SourceText text={material.text} language={topic.language} /></div>)}
       <div className="actions"><button className="primary" type="button" onClick={copy}>Добавить эту тему</button></div>
     </div>
   </div>;

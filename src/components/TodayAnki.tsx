@@ -1,5 +1,5 @@
-import { DialogueStudio } from './DialogueStudio';
+import { TopicStudio } from './TopicStudio';
 
 export function TodayAnki() {
-  return <DialogueStudio />;
+  return <TopicStudio />;
 }

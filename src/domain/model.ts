@@ -14,6 +14,7 @@ export interface Word {
   chatExamples?: string[];
   ownExamples?: string[];
   ankiGuid?: string;
+  ankiDecks?: { id: string; name: string }[];
   ankiReviews?: number;
   ankiUpdatedAt?: number;
   ankiImportId?: string;
@@ -43,6 +44,7 @@ export interface Resource {
   translation?: string;
   url: string;
   topicId?: string;
+  story?: { original: string; corrected: string; notes: string; situation: string };
 }
 
 export interface PracticeResult {
@@ -83,6 +85,7 @@ export interface Study {
   dailySpeech?: Record<string, DailySpeech>;
   learningSessions?: Record<string, import('./learning-session').LearningSession>;
   dialogueSessions?: Record<string, import('./dialogue-session').DialogueSession>;
+  storySessions?: Record<string, import('./story-session').StorySession>;
   practiceDays?: Record<string, Record<string, Partial<Record<PracticeMode, PracticeCounts>>>>;
 }
 
