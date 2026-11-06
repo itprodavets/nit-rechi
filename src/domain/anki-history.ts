@@ -123,3 +123,19 @@ export async function readAnkiDays(language: string, keys: ReadonlySet<string>, 
   });
   return { days, missed };
 }
+
+export type RecentLapse = { count: number; last: number };
+
+export async function readRecentLapses(language: string, start: number, end: number) {
+  const lapses = new Map<string, RecentLapse>();
+  await visitHistory(language, (key, reviews) => {
+    let count = 0, last = 0;
+    for (const [at, , rating] of reviews) {
+      if (rating !== 1 || at < start || at > end) continue;
+      count++;
+      last = Math.max(last, at);
+    }
+    if (count) lapses.set(key, { count, last });
+  });
+  return lapses;
+}

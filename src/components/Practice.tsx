@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWorkspace } from '../context';
 import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, selectLanguage, topicMaterials } from '../domain/model';
 import type { Outcome, PracticeItem, PracticeMode, Study, Word } from '../domain/model';
-import { deleteTake, getTake, isRecording, stopVoice, toggleRecording } from '../domain/voice.js';
+import { Recording } from './Recording';
+import { DailyPractice } from './DailyPractice';
 import { Empty, Fold, Heading, SourceLink, SourceText, VoiceButtons } from './common';
 import { AnkiHistory } from './AnkiHistory';
 import { WordExamples, WordExamplesList } from './WordExamples';
@@ -22,37 +23,6 @@ function addExample(study: Study): Study {
     words: [...study.words, ...examples],
     topics: study.topics.some(entry => entry.id === topic.id) ? study.topics : [...study.topics, topic]
   };
-}
-
-function Recording({ itemId }: { itemId: string }) {
-  const { notify } = useWorkspace();
-  const [revision, refresh] = useState(0);
-  const [url, setUrl] = useState<string>();
-  const [recording, setRecording] = useState(false);
-  useEffect(() => () => stopVoice(), []);
-  useEffect(() => {
-    let active = true;
-    let source: string | undefined;
-    getTake(itemId).then(blob => {
-      if (!active) return;
-      source = blob ? URL.createObjectURL(blob) : undefined;
-      setUrl(source);
-    }, () => { if (active) setUrl(undefined); });
-    return () => { active = false; if (source) URL.revokeObjectURL(source); };
-  }, [itemId, revision]);
-  const record = () => toggleRecording(itemId, (message: string) => {
-    notify(message);
-    setRecording(isRecording());
-    refresh(value => value + 1);
-  });
-  async function clear() {
-    try { await deleteTake(itemId); refresh(value => value + 1); notify('Запись удалена.'); }
-    catch { notify('Не удалось удалить запись.'); }
-  }
-  return <div className="recording">
-    <button type="button" id="record" aria-pressed={recording} onClick={record}>{recording ? 'Остановить запись' : 'Записать ответ'}</button>
-    {url && <div className="take"><audio controls preload="metadata" aria-label="Твоя запись" src={url} /><button type="button" className="subtle" onClick={clear}>Удалить запись</button></div>}
-  </div>;
 }
 
 function comparable(answer: string, language: string) {
@@ -186,12 +156,12 @@ export function Practice() {
     reset(value => value + 1);
   }
   return <><Heading title="Практика" detail={due ? `К повторению · ${due} из ${queue.length}` : item ? 'Можно потренироваться заранее' : undefined} />
-    {item ? <>
+    {item ? <DailyPractice key={study.language}>
       <div className="practice-modes" role="group" aria-label="Способ ответа">
         {(Object.keys(modeLabels) as PracticeMode[]).filter(value => value !== 'choice' || options.length > 0)
           .map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => chooseMode(value)}>{modeLabels[value]}</button>)}
       </div>
       <PracticeCard key={JSON.stringify([item.id, attempt, mode])} item={item} mode={mode} options={options} next={advance} score={score} />
-    </> :
+    </DailyPractice> :
       <Empty sample={() => update(addExample)}>Начни со своего текста, упражнения или слов из Anki.</Empty>}</>;
 }

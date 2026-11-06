@@ -52,7 +52,11 @@ export interface PracticeResult {
   updated: number;
   mode?: PracticeMode;
   spokenResult?: Outcome;
+  spokenUpdated?: number;
 }
+
+export type DailyWord = { wordId: string; lapses: number };
+export type DailySpeech = { date: string; targets: DailyWord[]; answers: Partial<Record<string, Outcome>> };
 
 export interface Study {
   language: string;
@@ -61,6 +65,7 @@ export interface Study {
   topics: Topic[];
   resources: Resource[];
   results: Record<string, PracticeResult>;
+  dailySpeech?: Record<string, DailySpeech>;
   practiceDays?: Record<string, Record<string, Partial<Record<PracticeMode, PracticeCounts>>>>;
 }
 
@@ -126,12 +131,20 @@ export function localDay(timestamp: number) {
   return [date.getFullYear(), date.getMonth() + 1, date.getDate()].map(part => String(part).padStart(2, '0')).join('-');
 }
 
+export function lastSpoken(result?: PracticeResult) {
+  const spoken = !result?.mode || result.mode === 'spoken';
+  return {
+    outcome: result?.spokenResult ?? (spoken ? result?.result : undefined),
+    updated: result?.spokenUpdated ?? (spoken ? result?.updated : undefined)
+  };
+}
+
 export function assess(study: Study, id: string, result: Outcome, now: number, mode: PracticeMode): Study {
   const previous = study.results[id];
   const level = result === 'independent' ? (previous?.level ?? 0) + 1 : 0;
   const days = [1, 3, 7, 14, 30][Math.min(Math.max(level - 1, 0), 4)];
-  const spokenResult = mode === 'spoken' ? result : previous?.spokenResult ?? (previous?.mode ? undefined : previous?.result);
-  const next = { level, result, due: now + (result === 'retry' ? 0 : days * day), attempts: (previous?.attempts ?? 0) + 1, updated: now, mode, spokenResult };
+  const spoken = mode === 'spoken' ? { outcome: result, updated: now } : lastSpoken(previous);
+  const next = { level, result, due: now + (result === 'retry' ? 0 : days * day), attempts: (previous?.attempts ?? 0) + 1, updated: now, mode, spokenResult: spoken.outcome, spokenUpdated: spoken.updated };
   const language = study.language;
   const date = localDay(now);
   const recentDays = Object.fromEntries(Object.entries(study.practiceDays?.[language] ?? {})
