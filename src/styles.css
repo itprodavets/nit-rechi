@@ -294,3 +294,22 @@ button:disabled { opacity: .52; cursor: default; }
 
 .progress-words { margin-top: 8px; }
 .progress-words button { overflow-wrap: anywhere; }
+
+.daily-panel {
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  margin-bottom: 18px;
+  padding: clamp(15px, 3vw, 24px);
+  border: 1px solid #456756;
+  border-radius: 15px;
+  background: linear-gradient(115deg, #213a31, var(--panel) 75%);
+}
+.daily-panel h2 { margin: 4px 0; font-size: clamp(21px, 3vw, 28px); letter-spacing: -.025em; }
+.daily-panel .fold { flex-basis: 100%; }
+.daily-results { display: grid; gap: 6px; list-style: none; margin: 0 0 12px; padding: 0; }
+.daily-results li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; overflow-wrap: anywhere; }
+.daily-session .task > p.sub { margin-top: 7px; }
