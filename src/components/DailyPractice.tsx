@@ -7,6 +7,7 @@ import { dailyTargets, lapseWindow } from '../domain/daily-speech';
 import { assess, localDay, resultLabels } from '../domain/model';
 import type { DailyWord, Outcome, Topic, Word } from '../domain/model';
 import { WordExamplesList } from './WordExamples';
+import { WordCue } from './WordCue';
 import { Recording } from './Recording';
 import { Fold } from './common';
 
@@ -17,7 +18,6 @@ function SpeechTask({ word, topic, target, count, done, date, close, save }: {
   const [revealed, setRevealed] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
-  const cue = word.meaning || word.title;
   return <div className="session daily-session">
     <section className="task">
       <div className="task-top">
@@ -26,7 +26,9 @@ function SpeechTask({ word, topic, target, count, done, date, close, save }: {
       </div>
       <h2 ref={heading} tabIndex={-1}>{topic?.title ?? 'Ситуация из жизни'}</h2>
       <p className="prompt">{topic?.prompt || 'Вспомни реальную ситуацию. Расскажи, что произошло и что ты сказал бы собеседнику.'}</p>
-      <p>Скажи 2–3 фразы и употреби {word.meaning ? 'слово со значением' : 'слово'} <strong lang={word.meaning ? undefined : word.language}>«{cue}»</strong>.</p>
+      <p>{word.meaning ? 'Вспомни слово по подсказке и употреби его в 2–3 фразах.'
+        : 'Скажи 2–3 фразы и употреби в них это слово.'}</p>
+      <WordCue word={word} />
       <p className="sub">{target.lapses ? `Ответов «Снова» в Anki за 30 дней · ${target.lapses}`
         : target.fromReview ? 'Это слово уже встречалось в Anki. Теперь попробуй употребить его в речи.'
           : 'На прошлом устном ответе понадобилась помощь или повторение.'}</p>
