@@ -10,18 +10,25 @@ export interface Archive { notes: ArchiveNote[]; decks: Record<string, string>; 
 export const reviewKey = (language: string, guid: string) => JSON.stringify([language, guid]);
 
 export function notesInDeck(archive: Archive, deck: string): ArchiveNote[] {
-  return deck ? archive.notes.filter(note => note.deckIds.includes(deck)) : archive.notes;
+  if (!deck) return archive.notes;
+  const prefix = archive.decks[deck] + '::';
+  const ids = new Set(Object.entries(archive.decks).filter(([id, name]) => id === deck || name.startsWith(prefix)).map(([id]) => id));
+  return archive.notes.filter(note => note.deckIds.some(id => ids.has(id)));
 }
 
 export function suggestColumns(names: string[], count: number): Columns {
+  const eligible = Array.from({ length: count }, (_, index) => index).filter(index => {
+    const name = (names[index] ?? '').toLowerCase().replaceAll('_', ' ').trim();
+    return !/(?:^|\s)(?:audio|sound|image|img|picture|id|key|pinyin|transcription|ipa|ordinal)(?:\s|$|\d)/.test(name);
+  });
   const lookup = (pattern: RegExp, excluded: number[]) =>
-    names.findIndex((name, index) => !excluded.includes(index) && pattern.test(name));
-  const target = lookup(/word|expression|term|front|汉字|單字|单词|lemma|vocab|^text$|^english$|^слово$/i, []);
-  const word = target === -1 ? 0 : target;
-  const translation = lookup(/back|meaning|translation|definition|^russian$|перевод|значение|释义/i, [word]);
-  const meaning = translation === -1 ? (count > 1 ? [0, 1].find(index => index !== word)! : -1) : translation;
-  const example = lookup(/example|sentence|context|пример|例句/i, [word, meaning]);
-  return [word + 1, meaning + 1, example === -1 && !names.length && count === 3 ? 3 : example + 1];
+    eligible.find(index => !excluded.includes(index) && pattern.test(names[index]?.trim() ?? ''));
+  const word = lookup(/^(word|expression|term|front|hanzi|simplified|traditional|汉字|單字|单词|lemma|vocab|text|english|слово|вопрос)$/i, [])
+    ?? eligible[0] ?? 0;
+  const example = lookup(/example|sentence|context|пример|例句/i, [word]) ?? (!names.length && count === 3 ? 2 : -1);
+  const meaning = lookup(/back|meaning|translation|definition|^russian$|^answer$|перевод|значение|^ответ$|释义/i, [word, example])
+    ?? (!names.length ? eligible.find(index => index !== word && index !== example) : undefined) ?? -1;
+  return [word + 1, meaning + 1, example + 1];
 }
 
 const languageHints: Record<string, RegExp> = {

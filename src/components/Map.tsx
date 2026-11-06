@@ -2,28 +2,33 @@ import { useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useWorkspace } from '../context';
 import { normalize, topicMaterials, upsert } from '../domain/model';
-import type { Topic, Word } from '../domain/model';
+import type { Topic } from '../domain/model';
+import { starterTopics } from '../domain/starter-topics';
 import { Fold, Heading, SourceText, copyText } from './common';
 import { AnkiHistory } from './AnkiHistory';
 
 const positions = [[22, 24], [77, 24], [18, 51], [82, 51], [23, 78], [76, 78]];
 
-function Network({ topic, words, selected, select }: { topic: Topic; words: Word[]; selected?: Word; select: (id: string) => void }) {
-  const nodes = words.slice(0, positions.length);
+type Branch = Pick<Topic, 'id' | 'title' | 'language'>;
+
+function Network({ title, branches, selected, select, label, more }: {
+  title: string; branches: Branch[]; selected?: string; select: (id: string) => void; label: string; more: string;
+}) {
+  const nodes = branches.slice(0, positions.length);
   return <>
-    <div className="network" aria-label="Тема и связанные слова">
+    <div className="network" aria-label={label}>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         {nodes.map((word, index) => {
           const [x, y] = positions[index];
-          return <path key={word.id} className={selected?.id === word.id ? 'active' : ''} d={`M50 50 C${x} 50 50 ${y} ${x} ${y}`} />;
+          return <path key={word.id} className={selected === word.id ? 'active' : ''} d={`M50 50 C${x} 50 50 ${y} ${x} ${y}`} />;
         })}
       </svg>
-      <div className="core">{topic.title}</div>
-      {nodes.map((word, index) => <button key={word.id} className="word-node" type="button" aria-pressed={selected?.id === word.id}
+      <div className="core">{title}</div>
+      {nodes.map((word, index) => <button key={word.id} className="word-node" type="button" aria-pressed={selected === word.id}
         style={{ left: positions[index][0] + '%', top: positions[index][1] + '%' }} lang={word.language} onClick={() => select(word.id)}>{word.title}</button>)}
     </div>
-    {words.length > nodes.length && <Fold title={`Все слова темы · ${words.length}`}>
-      <div className="actions">{words.map(word => <button key={word.id} type="button" onClick={() => select(word.id)}>{word.title}</button>)}</div>
+    {branches.length > nodes.length && <Fold title={`${more} · ${branches.length}`}>
+      <div className="actions">{branches.map(word => <button key={word.id} type="button" onClick={() => select(word.id)}>{word.title}</button>)}</div>
     </Fold>}
   </>;
 }
@@ -94,8 +99,37 @@ function TopicEditor({ entry, finish }: { entry?: Topic; finish: (id: string) =>
   </form>;
 }
 
+function StarterMap() {
+  const { study, update, notify, openTopic } = useWorkspace();
+  const examples = starterTopics(study.language);
+  const [selected, choose] = useState(examples[0].id);
+  const topic = examples.find(example => example.id === selected) ?? examples[0];
+  function copy() {
+    const match = (entry: Topic) => entry.language === topic.language && entry.title === topic.title;
+    let id = topic.id;
+    if (update(current => {
+      const existing = current.topics.find(match);
+      if (existing) { id = existing.id; return current; }
+      return { ...current, topics: upsert(current.topics, topic) };
+    })) {
+      notify('Тема доступна на твоей карте.');
+      openTopic(id);
+    }
+  }
+  return <div className="starter-map">
+    <p className="sub">Выбери ветку, чтобы посмотреть задание и добавить тему на свою карту.</p>
+    <Network title="Повседневная речь" branches={examples} selected={topic.id} select={choose} label="Пример сети тем" more="Все примеры" />
+    <div className="word-detail">
+      <h2 lang={topic.language}>{topic.title}</h2>
+      <p>{topic.prompt}</p>
+      {topicMaterials(topic).map(material => <SourceText key={material.text} text={material.text} language={topic.language} />)}
+      <div className="actions"><button className="primary" type="button" onClick={copy}>Добавить эту тему</button></div>
+    </div>
+  </div>;
+}
+
 export function MapPage() {
-  const { active, topicId, openTopic, openResource, practice } = useWorkspace();
+  const { study, active, topicId, openTopic, openResource, practice } = useWorkspace();
   const [selectedId, select] = useState<string>();
   const [editor, setEditor] = useState<{ mode: 'new' | 'edit'; revision: number }>({ mode: 'new', revision: 0 });
   const [formVisible, setFormVisible] = useState(false);
@@ -117,10 +151,13 @@ export function MapPage() {
     <div className="map-layout">
       <section className="map-workspace">
         {topic ? <>
+          <Fold title="Сеть моих тем">
+            <Network title="Мои темы" branches={active.topics} selected={topic.id} select={openTopic} label="Сеть моих тем" more="Все темы" />
+          </Fold>
           <label className="compact-field">Тема <select value={topic.id} onChange={event => {
             openTopic(event.target.value); select(undefined); setEditor(previous => ({ mode: 'new', revision: previous.revision + 1 }));
           }}>{active.topics.map(entry => <option key={entry.id} value={entry.id}>{entry.title}</option>)}</select></label>
-          <Network topic={topic} words={linked} selected={selected} select={select} />
+          <Network title={topic.title} branches={linked} selected={selected?.id} select={select} label="Тема и связанные слова" more="Все слова темы" />
           {selected && <div className="word-detail">
             <strong lang={selected.language}>{selected.title}</strong>
             {selected.meaning && <p>{selected.meaning}</p>}
@@ -135,7 +172,8 @@ export function MapPage() {
           {resources.length > 0 && <Fold title={`Из библиотеки · ${resources.length}`}>
             <div className="actions">{resources.map(resource => <button key={resource.id} type="button" onClick={() => openResource(resource.id)}>{resource.title}</button>)}</div>
           </Fold>}
-        </> : <p className="sub">Создай тему для ситуации, о которой хочешь уметь говорить. К ней можно привязать слова и материалы.</p>}
+        </> : <StarterMap key={study.language} />}
+        {topic && <Fold title="Карта-пример"><StarterMap key={study.language} /></Fold>}
       </section>
       <details ref={details} className="fold editor" open={!topic || undefined} onToggle={event => setFormVisible(event.currentTarget.open)}>
         <summary>{editor.mode === 'edit' ? 'Редактировать тему' : 'Новая тема'}</summary>

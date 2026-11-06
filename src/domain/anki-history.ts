@@ -44,20 +44,58 @@ export async function readReviews(key: string): Promise<Review[]> {
   });
 }
 
-export async function readReviewedKeys(language: string, start: number, end: number): Promise<Set<string>> {
+async function visitHistory(language: string, visit: (key: string, reviews: Review[]) => void) {
   const db = await openHistory();
   const prefix = JSON.stringify([language]).slice(0, -1) + ',';
-  return new Promise((resolve, reject) => {
-    const keys = new Set<string>();
+  return new Promise<void>((resolve, reject) => {
     const range = IDBKeyRange.bound(prefix, prefix + '\uffff');
     const request = db.transaction('notes').objectStore('notes').openCursor(range);
     request.onsuccess = () => {
       const cursor = request.result;
-      if (!cursor) { resolve(keys); return; }
-      const reviews: Review[] = cursor.value;
-      if (reviews.some(([at]) => at >= start && at < end)) keys.add(String(cursor.key));
+      if (!cursor) { resolve(); return; }
+      visit(String(cursor.key), cursor.value);
       cursor.continue();
     };
     request.onerror = () => reject(request.error);
+  });
+}
+
+export async function readReviewedKeys(language: string, start: number, end: number): Promise<Set<string>> {
+  const keys = new Set<string>();
+  await visitHistory(language, (key, reviews) => {
+    if (reviews.some(([at]) => at >= start && at < end)) keys.add(key);
+  });
+  return keys;
+}
+
+export interface ReviewSummary {
+  total: number;
+  recalled: number;
+  latestRating: number;
+  latestInterval: number;
+}
+
+export async function readReviewSummaries(language: string) {
+  const summaries = new Map<string, ReviewSummary>();
+  await visitHistory(language, (key, reviews) => {
+    const latest = reviews.reduce<Review | undefined>((previous, review) =>
+      !previous || review[0] > previous[0] ? review : previous, undefined);
+    if (latest) summaries.set(key, {
+      total: reviews.length, recalled: reviews.filter(review => review[2] >= 3).length,
+      latestRating: latest[2], latestInterval: latest[3]
+    });
+  });
+  return summaries;
+}
+
+export async function deleteReviewKeys(keys: string[]) {
+  if (!keys.length) return;
+  const db = await openHistory();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction('notes', 'readwrite');
+    const store = transaction.objectStore('notes');
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+    for (const key of keys) store.delete(key);
   });
 }
