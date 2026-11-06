@@ -6,6 +6,7 @@ import type { Topic } from '../domain/model';
 import { starterTopics } from '../domain/starter-topics';
 import { Fold, Heading, SourceText, copyText } from './common';
 import { AnkiHistory } from './AnkiHistory';
+import { WordExamples } from './WordExamples';
 
 const positions = [[22, 24], [77, 24], [18, 51], [82, 51], [23, 78], [76, 78]];
 
@@ -161,8 +162,7 @@ export function MapPage() {
           {selected && <div className="word-detail">
             <strong lang={selected.language}>{selected.title}</strong>
             {selected.meaning && <p>{selected.meaning}</p>}
-            <SourceText text={selected.example || selected.title} language={selected.language} />
-            {selected.chatExamples?.length ? <Fold title="Примеры из чата">{selected.chatExamples.map(example => <p key={example}>{example}</p>)}</Fold> : null}
+            <WordExamples key={selected.id} word={selected} />
             <AnkiHistory key={selected.id} word={selected} />
           </div>}
           <div className="actions"><button className="primary" type="button" onClick={() => practice(topic.id)}>Практиковать тему</button><button type="button" onClick={edit}>Изменить тему</button></div>

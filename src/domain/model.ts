@@ -9,8 +9,10 @@ export interface Word {
   meaning: string;
   example: string;
   chatExamples?: string[];
+  ownExamples?: string[];
   ankiGuid?: string;
   ankiReviews?: number;
+  ankiUpdatedAt?: number;
   vocabularyLevel?: VocabularyLevel;
 }
 

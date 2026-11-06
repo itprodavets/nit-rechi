@@ -5,6 +5,7 @@ import type { Outcome, PracticeItem, Study } from '../domain/model';
 import { deleteTake, getTake, isRecording, stopVoice, toggleRecording } from '../domain/voice.js';
 import { Empty, Fold, Heading, SourceLink, SourceText, VoiceButtons } from './common';
 import { AnkiHistory } from './AnkiHistory';
+import { WordExamples, WordExamplesList } from './WordExamples';
 
 const resultLabels: Record<Outcome, string> = { retry: 'Нужно повторить', assisted: 'С подсказкой', independent: 'Самостоятельно' };
 
@@ -65,7 +66,7 @@ function PracticeCard({ item, next, score }: { item: PracticeItem; next: () => v
     const ids = new Set(topic.links);
     return active.words.filter(word => ids.has(word.id));
   }, [active.words, topic]);
-  const reference = word ? word.example || word.title : resource ? (resource.kind === 'exercise' ? resource.answer : resource.text) : materials.at(-1)?.text;
+  const reference = resource ? (resource.kind === 'exercise' ? resource.answer : resource.text) : materials.at(-1)?.text;
   const prompt = word
     ? word.meaning ? `Вспомни, как сказать «${word.meaning}». Используй слово в своём предложении.` : 'Прослушай слово и попробуй употребить его.'
     : (resource?.prompt || topic?.prompt) || (resource ? kinds[resource.kind].prompt : 'Расскажи о ситуации своими словами.');
@@ -75,17 +76,19 @@ function PracticeCard({ item, next, score }: { item: PracticeItem; next: () => v
       {!word && <h2>{item.title}</h2>}
       <p className="prompt source-text">{prompt}</p>
       {topicWords.length > 0 && <Fold title={`Слова для ответа · ${topicWords.length}`}>
-        <ul>{topicWords.map(word => <li key={word.id}><strong lang={word.language}>{word.title}</strong>{word.meaning && ' · ' + word.meaning}</li>)}</ul>
+        <ul>{topicWords.map(word => <li key={word.id}><strong lang={word.language}>{word.title}</strong>{word.meaning && ' · ' + word.meaning}
+          <WordExamples word={word} />
+        </li>)}</ul>
       </Fold>}
       {resource?.kind === 'exercise' && resource.text && <p className="source-text" lang={item.language}>{resource.text}</p>}
       {word && !word.meaning && <VoiceButtons text={word.title} language={item.language} />}
       <Recording itemId={item.id} />
       {revealed ? <div className="reference">
         <p className="kicker">{resource?.kind === 'exercise' ? 'Ответ для сравнения' : resource ? 'Исходный материал' : 'Пример для сравнения'}</p>
-        {word && <h2 lang={item.language}>{word.title}</h2>}
-        {reference && <SourceText text={reference} language={item.language} />}
+        {word ? <><h2 lang={item.language}>{word.title}</h2><WordExamplesList word={word} /></>
+          : reference && <SourceText text={reference} language={item.language} />}
         {resource?.url && <SourceLink url={resource.url} />}
-        {!reference && !resource?.url && <p>Можно добавить пример ответа в карточке материала.</p>}
+        {!word && !reference && !resource?.url && <p>Можно добавить пример ответа в карточке материала.</p>}
         {materials.slice(0, -1).map(material => <Fold key={material.text} title={material.format}><SourceText text={material.text} language={item.language} /></Fold>)}
       </div> : <button type="button" className="subtle reveal" onClick={() => setRevealed(true)}>
         {resource?.kind === 'exercise' ? 'Показать ответ' : resource ? 'Показать материал' : 'Показать пример'}

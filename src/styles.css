@@ -148,3 +148,8 @@ form > button { justify-self: start; }
 .word-library > .actions, .word-library > label, .word-library > button, .word-library > .import-sample { margin-bottom: 12px; }
 .starter-map > .sub { margin-bottom: 12px; }
 .starter-map .word-detail .actions { margin-top: 12px; }
+.word-context form, .word-examples > div + div { margin-top: 12px; }
+.word-examples .actions { margin-top: 8px; }
+@media (max-width: 650px) {
+  .word-library .history > div > div { grid-column: 1 / -1; }
+}

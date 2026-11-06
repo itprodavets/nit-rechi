@@ -8,6 +8,7 @@ import type { VocabularyLevel } from '../domain/model';
 import { removeWords, vocabularyLabels, vocabularyStatus } from '../domain/vocabulary';
 import { deleteTakes } from '../domain/voice.js';
 import { AnkiHistory } from './AnkiHistory';
+import { WordExamples } from './WordExamples';
 
 type Filter = 'all' | VocabularyLevel;
 
@@ -96,7 +97,7 @@ export function WordLibrary() {
         : <button type="button" onClick={() => practice(word.id)} lang={word.language}>{word.title}</button>}
         <div><span>{word.meaning}</span><p className="sub">{status.source}</p>
           {summary && <p className="sub">Anki · «Хорошо» или «Легко» {summary.recalled} из {summary.total}</p>}
-          <AnkiHistory word={word} /></div>
+          <WordExamples word={word} /><AnkiHistory word={word} /></div>
         <label>Статус · {vocabularyLabels[status.level]} <select aria-label={'Статус · ' + word.title} value={word.vocabularyLevel ?? ''}
           onChange={event => {
             const value = event.target.value as VocabularyLevel | '';
