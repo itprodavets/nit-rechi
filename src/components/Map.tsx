@@ -6,6 +6,7 @@ import type { Topic } from '../domain/model';
 import { starterTopics } from '../domain/starter-topics';
 import { Fold, Heading, SourceText, copyText } from './common';
 import { AnkiHistory } from './AnkiHistory';
+import { TopicCanvas } from './TopicCanvas';
 import { WordExamples } from './WordExamples';
 
 const positions = [[22, 24], [77, 24], [18, 51], [82, 51], [23, 78], [76, 78]];
@@ -53,7 +54,7 @@ function TopicEditor({ entry, finish }: { entry?: Topic; finish: (id: string) =>
     const materials = entry ? topicMaterials(entry) : [];
     const text = String(data.get('material')).trim();
     const next: Topic = {
-      id: entry?.id ?? crypto.randomUUID(), title, language: study.language, links: [...chosen],
+      ...entry, id: entry?.id ?? crypto.randomUUID(), title, language: study.language, links: [...chosen],
       prompt: String(data.get('prompt')).trim(),
       materials: text && !materials.some(material => material.text === text) ? [...materials, { format: String(data.get('format')), text }] : materials
     };
@@ -152,8 +153,8 @@ export function MapPage() {
     <div className="map-layout">
       <section className="map-workspace">
         {topic ? <>
-          <Fold title="Сеть моих тем">
-            <Network title="Мои темы" branches={active.topics} selected={topic.id} select={openTopic} label="Сеть моих тем" more="Все темы" />
+          <Fold title="Сеть моих тем" open>
+            <TopicCanvas key={study.language} topics={active.topics} selected={topic.id} />
           </Fold>
           <label className="compact-field">Тема <select value={topic.id} onChange={event => {
             openTopic(event.target.value); select(undefined); setEditor(previous => ({ mode: 'new', revision: previous.revision + 1 }));

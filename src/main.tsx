@@ -7,7 +7,7 @@ import { stopVoice } from './domain/voice.js';
 import './styles.css';
 
 const Practice = lazy(() => import('./components/Practice').then(module => ({ default: module.Practice })));
-const Progress = lazy(() => import('./components/Practice').then(module => ({ default: module.Progress })));
+const Progress = lazy(() => import('./components/Progress').then(module => ({ default: module.Progress })));
 const MapPage = lazy(() => import('./components/Map').then(module => ({ default: module.MapPage })));
 const Materials = lazy(() => import('./components/Materials').then(module => ({ default: module.Materials })));
 const Account = lazy(() => import('./components/Account').then(module => ({ default: module.Account })));

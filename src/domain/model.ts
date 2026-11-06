@@ -1,5 +1,8 @@
 export type MaterialKind = 'reading' | 'exercise' | 'dialogue' | 'media';
 export type Outcome = 'independent' | 'assisted' | 'retry';
+export type PracticeMode = 'spoken' | 'choice' | 'written';
+export type PracticeCounts = Record<Outcome, number>;
+export type MapPoint = { x: number; y: number };
 export type VocabularyLevel = 'learning' | 'passive' | 'active';
 
 export interface Word {
@@ -21,6 +24,8 @@ export interface Topic {
   language: string;
   title: string;
   links: string[];
+  position?: MapPoint;
+  connections?: string[];
   prompt: string;
   material?: string;
   materials?: { format: string; text: string }[];
@@ -34,6 +39,7 @@ export interface Resource {
   text: string;
   prompt: string;
   answer: string;
+  translation?: string;
   url: string;
   topicId?: string;
 }
@@ -44,6 +50,8 @@ export interface PracticeResult {
   due: number;
   attempts: number;
   updated: number;
+  mode?: PracticeMode;
+  spokenResult?: Outcome;
 }
 
 export interface Study {
@@ -53,6 +61,7 @@ export interface Study {
   topics: Topic[];
   resources: Resource[];
   results: Record<string, PracticeResult>;
+  practiceDays?: Record<string, Record<string, Partial<Record<PracticeMode, PracticeCounts>>>>;
 }
 
 export type PracticeItem = Word | Topic | Resource;
@@ -104,12 +113,32 @@ export function practiceQueue(study: Study): PracticeItem[] {
   return [...words, ...topics, ...resources].sort((a, b) => (study.results[a.id]?.due ?? 0) - (study.results[b.id]?.due ?? 0));
 }
 
-export function assess(study: Study, id: string, result: Outcome, now: number): Study {
+export const modeLabels: Record<PracticeMode, string> = {
+  spoken: 'Устно', choice: 'Выбрать ответ', written: 'Написать ответ'
+};
+
+export const resultLabels: Record<Outcome, string> = {
+  retry: 'Нужно повторить', assisted: 'С подсказкой', independent: 'Самостоятельно'
+};
+
+export function localDay(timestamp: number) {
+  const date = new Date(timestamp);
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].map(part => String(part).padStart(2, '0')).join('-');
+}
+
+export function assess(study: Study, id: string, result: Outcome, now: number, mode: PracticeMode): Study {
   const previous = study.results[id];
   const level = result === 'independent' ? (previous?.level ?? 0) + 1 : 0;
   const days = [1, 3, 7, 14, 30][Math.min(Math.max(level - 1, 0), 4)];
-  const next = { level, result, due: now + (result === 'retry' ? 0 : days * day), attempts: (previous?.attempts ?? 0) + 1, updated: now };
-  return { ...study, results: { ...study.results, [id]: next } };
+  const spokenResult = mode === 'spoken' ? result : previous?.spokenResult ?? (previous?.mode ? undefined : previous?.result);
+  const next = { level, result, due: now + (result === 'retry' ? 0 : days * day), attempts: (previous?.attempts ?? 0) + 1, updated: now, mode, spokenResult };
+  const language = study.language;
+  const date = localDay(now);
+  const recentDays = Object.fromEntries(Object.entries(study.practiceDays?.[language] ?? {})
+    .filter(([date]) => date >= localDay(now - 90 * day)));
+  const attempts = recentDays[date]?.[mode] ?? { independent: 0, assisted: 0, retry: 0 };
+  recentDays[date] = { ...recentDays[date], [mode]: { ...attempts, [result]: attempts[result] + 1 } };
+  return { ...study, results: { ...study.results, [id]: next }, practiceDays: { ...study.practiceDays, [language]: recentDays } };
 }
 
 export function upsert<T extends { id: string }>(items: T[], entry: T) {

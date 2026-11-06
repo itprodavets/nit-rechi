@@ -2,20 +2,21 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useWorkspace } from '../context';
 import type { Word } from '../domain/model';
+import type { Glossary } from './Glossary';
 import { wordExamples } from '../domain/vocabulary';
 import { SourceText, VoiceButtons } from './common';
 
-export function WordExamplesList({ word }: { word: Word }) {
+export function WordExamplesList({ word, glossary }: { word: Word; glossary?: Glossary }) {
   const examples = wordExamples(word);
   return examples.length ? <div className="word-examples">
     {examples.map(({ text, source }) => <div key={text}>
       <p className="kicker">{source}</p>
-      <SourceText text={text} language={word.language} />
+      <SourceText text={text} language={word.language} glossary={glossary} />
     </div>)}
   </div> : <><p className="sub">У этого слова пока нет примеров употребления.</p><VoiceButtons text={word.title} language={word.language} /></>;
 }
 
-export function WordExamples({ word }: { word: Word }) {
+export function WordExamples({ word, glossary }: { word: Word; glossary?: Glossary }) {
   const { update, notify } = useWorkspace();
   const [open, setOpen] = useState(false);
   function add(event: FormEvent<HTMLFormElement>) {
@@ -44,7 +45,7 @@ export function WordExamples({ word }: { word: Word }) {
   return <details className="fold word-context" onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>Контекст и примеры · {wordExamples(word).length}</summary>
     {open && <>
-      <WordExamplesList word={word} />
+      <WordExamplesList word={word} glossary={glossary} />
       <form onSubmit={add}>
         <label>Добавить свой пример <textarea name="example" rows={2} maxLength={8000} required /></label>
         <button type="submit">Сохранить пример</button>
