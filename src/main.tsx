@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
+import { LanguageMenu } from './components/Language';
 import { StudyContext } from './context';
 import { itemsForLanguage, pages, readStudy, writeStudy } from './domain/model';
 import type { Page, Study } from './domain/model';
@@ -67,7 +68,7 @@ function App({ initial }: { initial: Study }) {
         {(Object.keys(pages) as Page[]).filter(entry => entry !== 'account').map(entry =>
           <a key={entry} href={'#' + entry} aria-current={entry === page ? 'page' : undefined}>{pages[entry]}</a>)}
       </nav>
-      <a className="account" href="#account" aria-current={page === 'account' ? 'page' : undefined}>Кабинет</a>
+      <div className="app-controls"><LanguageMenu /><a className="account" href="#account" aria-current={page === 'account' ? 'page' : undefined}>Кабинет</a></div>
     </header>
     <main id="screen"><Suspense fallback={<p className="sub" role="status">Загружаем…</p>}><Screen /></Suspense></main>
     <p className="notice" id="notice" role="status" hidden={!notice}>{notice}</p>

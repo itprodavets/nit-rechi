@@ -48,7 +48,7 @@ export function buildChatPrompt(language, topic = '', source) {
     JSON.stringify(schema, null, 2);
 }
 
-export function parseChatPackage(text, activeLanguage) {
+export function parseChatPackage(text) {
   if (text.length > 1_000_000) throw new Error('Файл должен быть меньше 1 МБ.');
   const input = text.replace(/^\uFEFF/, '').trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, '$1');
   let data;
@@ -60,9 +60,6 @@ export function parseChatPackage(text, activeLanguage) {
   let language;
   try { [language] = Intl.getCanonicalLocales(field(data.language, 'language', 35, true)); }
   catch { throw new Error('Укажи корректный код языка в поле language.'); }
-  if (language !== activeLanguage) {
-    throw new Error('Язык пакета — ' + language + '. Переключи язык в кабинете и повтори импорт.');
-  }
   const topic = {
     title: field(data.topic?.title, 'topic.title', 90, true),
     prompt: field(data.topic?.prompt, 'topic.prompt', 4000)

@@ -30,7 +30,7 @@ function SpeechTask({ word, topic, target, count, done, date, close, save }: {
       <p className="sub">{target.lapses ? `Ответов «Снова» в Anki за 30 дней · ${target.lapses}`
         : target.fromReview ? 'Это слово уже встречалось в Anki. Теперь попробуй употребить его в речи.'
           : 'На прошлом устном ответе понадобилась помощь или повторение.'}</p>
-      <Recording itemId={JSON.stringify(['daily-speech', date, word.id])} />
+      <Recording itemId={JSON.stringify(['daily-speech', date, word.id])} language={word.language} targets={[word.title]} />
       {revealed ? <div className="reference">
         <h2 lang={word.language}>{word.title}</h2><WordExamplesList word={word} />
       </div> : <button type="button" className="subtle reveal" onClick={() => setRevealed(true)}>Сверить слово и пример</button>}

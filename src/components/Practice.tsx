@@ -92,7 +92,7 @@ function PracticeCard({ item, next, mode, options, score }: {
       </Fold>}
       {resource?.kind === 'exercise' && resource.text && <GlossaryText text={resource.text} language={item.language} glossary={glossary} />}
       {word && !word.meaning && <VoiceButtons text={word.title} language={item.language} />}
-      {mode === 'spoken' ? <Recording itemId={item.id} /> : <form className="practice-response" onSubmit={event => {
+      {mode === 'spoken' ? <Recording itemId={item.id} language={item.language} targets={word ? [word.title] : [...new Set(topicWords.map(word => word.title))]} /> : <form className="practice-response" onSubmit={event => {
         event.preventDefault();
         if (answer.trim()) setChecked(true);
       }}>

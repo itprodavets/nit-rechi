@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useWorkspace } from '../context';
-import { archiveWords, mergeImportedWords, notesInDeck, reviewKey, suggestColumns, suggestLanguage } from '../domain/anki-model';
+import { archiveWords, mergeImportedWords, notesInDeck, reviewKey, suggestColumns } from '../domain/anki-model';
 import type { Archive, ArchiveNote, Columns, Review } from '../domain/anki-model';
+import { languageCodes, LanguageLabel } from './Language';
+import { suggestLanguage } from '../domain/language-detection';
 import { saveReviews } from '../domain/anki-history';
 import { languageName, selectLanguage } from '../domain/model';
 import { cleanField, readAnkiText } from '../domain/text-import.js';
@@ -12,7 +14,6 @@ import { Fold, Heading } from './common';
 
 const textFile = /\.(txt|tsv|csv)$/i;
 const supportedFile = /\.(apkg|colpkg|anki2|anki21|sqlite|sqlite3|txt|tsv|csv)$/i;
-const languageCodes = ['en', 'zh', 'ja', 'ko', 'es', 'fr', 'de', 'it', 'pt', 'ar', 'ru', 'uk'];
 const columnLabels = ['Слово или фраза', 'Значение', 'Пример'];
 
 function LanguageOptions() {
@@ -78,6 +79,10 @@ function AnkiImport() {
     [archive?.decks[chosenDeck], ...groups.map(group => group.names[group.columns[0] - 1])].filter(Boolean).join(' ')
   ), [archive, chosenDeck, groups]);
   const selectedLanguage = language ?? suggest ?? study.language;
+  let displayedLanguage = selectedLanguage === 'custom' ? undefined : selectedLanguage;
+  if (selectedLanguage === 'custom' && customLanguage.trim()) {
+    try { displayedLanguage = canonicalLanguage(customLanguage); } catch { /* The form keeps the raw code available for correction. */ }
+  }
   const languageChoices = [...new Set([study.language, ...(suggest ? [suggest] : []), ...languageCodes])];
 
   async function choose(file?: File) {
@@ -203,15 +208,18 @@ function AnkiImport() {
           <summary>{`Поля типа ${groupIndex + 1} · ${group.notes.length} заметок`}</summary>{fields}
         </details>;
       })}
+      <div className="import-language">
+        {displayedLanguage ? <LanguageLabel code={displayedLanguage} /> : <span>Укажи код языка</span>}
+        <small>{language ? 'Указан вручную' : suggest ? 'Определён по колоде' : 'Язык не определён, используется текущий'}</small>
+      </div>
+      <details className="fold language-override"><summary>Уточнить язык импорта</summary>
       <label>Язык импорта <select value={selectedLanguage} onChange={event => setLanguage(event.target.value)}>
         {languageChoices.map(code => <option key={code} value={code}>{languageName(code)}</option>)}
         <option value="custom">Другой язык</option>
       </select></label>
       {selectedLanguage === 'custom' && <label>Код языка <input list="language-options" value={customLanguage} maxLength={35} required
         placeholder="Например, nl или en-GB" onChange={event => setCustomLanguage(event.target.value)} /></label>}
-      <p className="sub">{language === undefined
-        ? (suggest ? 'Предложение по содержимому · ' + languageName(suggest) : 'Выбран язык из кабинета · ' + languageName(study.language)) + '. Можно изменить.'
-        : 'Укажи язык поля «Слово или фраза».'}</p>
+      </details>
       <button type="submit" className="primary">Импортировать</button>
       </>}
     </>}
@@ -228,11 +236,8 @@ export function Account() {
   }
   return <><Heading title="Кабинет" label="Личное пространство" />
     <LanguageOptions />
-    <Fold title="Изучаемый язык" open>
+    <Fold title="Настройки языка">
       <div className="settings">
-        <label>Активный язык <select value={study.language} onChange={event => select(event.target.value)}>
-          {Object.keys(study.languages).map(language => <option key={language} value={language}>{languageName(language)}</option>)}
-        </select></label>
         <form className="inline-form" onSubmit={add}>
           <label>Добавить язык <input name="code" required placeholder="zh, es, ja…" list="language-options" autoComplete="off" maxLength={35} /></label>
           <button type="submit">Добавить</button>

@@ -1,26 +1,36 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useWorkspace } from '../context';
 import { applyChatPackage, buildChatPrompt, parseChatPackage, safeSourceUrl } from '../domain/chat-package.js';
-import { kinds, upsert } from '../domain/model';
+import { languageCodes, LanguageLabel } from './Language';
+import { suggestMaterialLanguage } from '../domain/language-detection';
+import { kinds, languageName, selectLanguage, upsert } from '../domain/model';
 import type { MaterialKind, Resource } from '../domain/model';
 import { StarterMaterials } from './StarterMaterials';
 import { copyText, Fold, Heading, SourceLink, SourceText } from './common';
 
-function TopicSelect({ value, change, fallback }: { value: string; change: (id: string) => void; fallback: string }) {
-  const { active } = useWorkspace();
+function TopicSelect({ value, change, fallback, language }: { value: string; change: (id: string) => void; fallback: string; language?: string }) {
+  const { study } = useWorkspace();
+  const topics = study.topics.filter(topic => topic.language === (language ?? study.language));
   return <select value={value} onChange={event => change(event.target.value)}>
     <option value="">{fallback}</option>
-    {active.topics.map(topic => <option key={topic.id} value={topic.id}>{topic.title}</option>)}
+    {topics.map(topic => <option key={topic.id} value={topic.id}>{topic.title}</option>)}
   </select>;
 }
 
 function MaterialForm({ resource, done }: { resource?: Resource; done: (id: string) => void }) {
-  const { study, active, notify, update } = useWorkspace();
+  const { study, notify, update } = useWorkspace();
   const [title, setTitle] = useState(resource?.title ?? '');
   const [text, setText] = useState(resource?.text ?? '');
   const [kind, setKind] = useState<MaterialKind>(resource?.kind ?? 'reading');
+  const [answer, setAnswer] = useState(resource?.answer ?? '');
   const [topic, setTopic] = useState(resource?.topicId ?? '');
+  const [override, setOverride] = useState('');
+  const detected = useMemo(() => resource ? undefined : suggestMaterialLanguage(kind === 'exercise' ? answer : text),
+    [resource, kind, answer, text]);
+  const language = resource?.language ?? (override || detected || study.language);
+  const selectedTopic = study.topics.find(entry => entry.id === topic && entry.language === language)?.id;
+  const options = [...new Set([study.language, language, ...Object.keys(study.languages), ...languageCodes])];
 
   async function importFile(input: HTMLInputElement) {
     const file = input.files?.[0];
@@ -47,12 +57,12 @@ function MaterialForm({ resource, done }: { resource?: Resource; done: (id: stri
     if (!text.trim() && !url && !(kind === 'exercise' && prompt)) { notify('Добавь текст, ссылку или условие упражнения.'); return; }
     const entry: Resource = {
       ...resource,
-      id: resource?.id ?? crypto.randomUUID(), title: title.trim(), language: study.language, kind, text: text.trim(), prompt, url,
-      topicId: active.topics.find(entry => entry.id === topic)?.id,
+      id: resource?.id ?? crypto.randomUUID(), title: title.trim(), language, kind, text: text.trim(), prompt, url,
+      topicId: selectedTopic,
       translation: String(form.get('translation')).trim() || undefined,
-      answer: kind === 'exercise' ? String(form.get('answer')).trim() : ''
+      answer: kind === 'exercise' ? answer.trim() : ''
     };
-    if (update(current => ({ ...current, resources: upsert(current.resources, entry) }))) {
+    if (update(current => ({ ...selectLanguage(current, language), resources: upsert(current.resources, entry) }))) {
       notify('Материал сохранён.');
       done(entry.id);
     }
@@ -64,14 +74,21 @@ function MaterialForm({ resource, done }: { resource?: Resource; done: (id: stri
       <label>Тип материала <select value={kind} onChange={event => setKind(event.target.value as MaterialKind)}>
         {Object.entries(kinds).map(([value, entry]) => <option key={value} value={value}>{entry.label}</option>)}
       </select></label>
-      <label>Тема на карте <TopicSelect value={topic} change={setTopic} fallback="Без темы" /></label>
+      <label>Тема на карте <TopicSelect value={selectedTopic ?? ''} change={setTopic} fallback="Без темы" language={language} /></label>
     </div>
     <label>Импортировать текст <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={event => void importFile(event.currentTarget)} /></label>
     <label>Текст, диалог или условия задания <textarea rows={5} maxLength={250000} value={text} onChange={event => setText(event.target.value)} /></label>
+    <div className="import-language"><LanguageLabel code={language} /><small>{detected && !override ? 'Определён по тексту' : override || resource ? 'Язык материала' : 'Текущий язык'}</small></div>
+    {!resource && <details className="fold language-override"><summary>Уточнить язык материала</summary>
+      <label>Язык текста <select value={override} onChange={event => setOverride(event.target.value)}>
+        <option value="">Автоматически</option>
+        {options.map(code => <option key={code} value={code}>{languageName(code)}</option>)}
+      </select></label>
+    </details>}
     <label>Перевод на русский <textarea name="translation" rows={3} defaultValue={resource?.translation} maxLength={250000} /></label>
     <label>Ссылка на источник <input name="url" type="url" defaultValue={resource?.url} maxLength={2000} placeholder="https://…" /></label>
     <label>Что сделать или сказать <textarea name="prompt" rows={2} defaultValue={resource?.prompt} maxLength={4000} /></label>
-    {kind === 'exercise' && <label>Ответ для сравнения <textarea name="answer" rows={3} defaultValue={resource?.answer} maxLength={12000} /></label>}
+    {kind === 'exercise' && <label>Ответ для сравнения <textarea name="answer" rows={3} value={answer} onChange={event => setAnswer(event.target.value)} maxLength={12000} /></label>}
     <button type="submit" className="primary">Сохранить материал</button>
   </form>;
 }
@@ -99,11 +116,14 @@ function ChatExchange({ source, setSource }: { source?: Resource; setSource: (re
     if (file.size > 1_000_000) { notify('Файл должен быть меньше 1 МБ.'); return; }
     setBusy(true);
     try {
-      const packet = parseChatPackage(file.size ? await file.text() : pasted, study.language);
+      const packet = parseChatPackage(file.size ? await file.text() : pasted);
       let result: ReturnType<typeof applyChatPackage> | undefined;
       const saved = update(current => {
         if (current.language !== study.language) throw new Error('Активный язык изменился. Открой форму ещё раз.');
-        result = applyChatPackage(current, packet, selected);
+        if (selected && !current.topics.some(topic => topic.id === selected && topic.language === packet.language)) {
+          throw new Error('Язык выбранной темы отличается от языка пакета. Выбери «Тема из файла».');
+        }
+        result = applyChatPackage(selectLanguage(current, packet.language), packet, selected);
         return result.next;
       });
       if (saved && result) {
@@ -149,7 +169,7 @@ export function Materials() {
         const kind = kinds[resource.kind];
         const topic = active.topics.find(entry => entry.id === resource.topicId);
         return <article key={resource.id} className="resource">
-          <p className="kicker">{kind.label}{topic && ' · ' + topic.title}</p>
+          <p className="kicker"><LanguageLabel code={resource.language} /> · {kind.label}{topic && ' · ' + topic.title}</p>
           <h2>{resource.title}</h2>
           <SourceLink url={resource.url} />
           {resource.text && <Fold title={resource.kind === 'exercise' ? 'Читать условие' : 'Открыть текст'} open={resource.id === opened || undefined}>

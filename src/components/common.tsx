@@ -4,12 +4,12 @@ import type { Glossary } from './Glossary';
 import { useWorkspace } from '../context';
 import { safeSourceUrl } from '../domain/chat-package.js';
 import { speak, stopSpeaking } from '../domain/voice.js';
-import { languageName } from '../domain/model';
+import { LanguageLabel } from './Language';
 
 export function Heading({ title, detail, label }: { title: string; detail?: string; label?: string }) {
   const { study } = useWorkspace();
   return <header className="heading">
-    <p className="kicker">{label ?? languageName(study.language)}</p>
+    <p className="kicker">{label ?? <LanguageLabel code={study.language} />}</p>
     <h1>{title}</h1>
     {detail && <p className="sub">{detail}</p>}
   </header>;
