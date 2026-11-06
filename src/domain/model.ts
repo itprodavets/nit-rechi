@@ -55,7 +55,7 @@ export interface PracticeResult {
   spokenUpdated?: number;
 }
 
-export type DailyWord = { wordId: string; lapses: number };
+export type DailyWord = { wordId: string; lapses: number; fromReview?: true };
 export type DailySpeech = { date: string; targets: DailyWord[]; answers: Partial<Record<string, Outcome>> };
 
 export interface Study {
