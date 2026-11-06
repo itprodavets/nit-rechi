@@ -82,6 +82,7 @@ export interface Study {
   ankiImports?: Record<string, AnkiImportReport>;
   dailySpeech?: Record<string, DailySpeech>;
   learningSessions?: Record<string, import('./learning-session').LearningSession>;
+  dialogueSessions?: Record<string, import('./dialogue-session').DialogueSession>;
   practiceDays?: Record<string, Record<string, Partial<Record<PracticeMode, PracticeCounts>>>>;
 }
 

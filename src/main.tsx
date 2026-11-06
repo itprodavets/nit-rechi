@@ -9,6 +9,7 @@ import { stopVoice } from './domain/voice.js';
 import './styles.css';
 import './shell.css';
 import './learning.css';
+import './dialogue.css';
 
 const Today = lazy(() => import('./components/Today').then(module => ({ default: module.Today })));
 const Practice = lazy(() => import('./components/Practice').then(module => ({ default: module.Practice })));

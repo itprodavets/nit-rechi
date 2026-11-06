@@ -7,6 +7,7 @@ import { localDay } from '../domain/model';
 import { addExample } from '../domain/sample-study';
 import { createLearningSession, currentLearningSession, lapseWindow, practiceWeek, selectLearningTargets, wordCount } from '../domain/learning-session';
 import type { Budget } from '../domain/learning-session';
+import { DialogueStudio } from './DialogueStudio';
 import { LearningSession } from './LearningSession';
 import { Icon } from './Icon';
 import { LanguageLabel } from './Language';
@@ -21,6 +22,7 @@ function LearningPath() {
 
 export function Today() {
   const { study, active, update, practice } = useWorkspace();
+  const [dialogue, setDialogue] = useState(false);
   const [minutes, setMinutes] = useState<Budget>(10);
   const [open, setOpen] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -74,12 +76,14 @@ export function Today() {
       } })) setOpen(true);
     } finally { setStarting(false); }
   }
+  if (dialogue) return <><button type="button" className="back-to-today subtle" onClick={() => setDialogue(false)}>← К ежедневной практике</button><DialogueStudio /></>;
   if (open && session && !completed) return <LearningSession session={session} close={() => setOpen(false)} />;
   const answers = Object.values(session?.answers ?? {});
 
   return <div className="today-page">
     <header className="today-heading"><div><p className="kicker">{new Intl.DateTimeFormat('ru', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p>
       <h1>Каждый день — чуть свободнее.</h1><p className="sub">Небольшое занятие. Слова, которые пригодятся тебе.</p></div><span className="language-pill"><LanguageLabel code={study.language} /></span></header>
+    <div className="today-mode-picker"><div><p className="kicker">ПРАКТИКА ПОД ТВОЮ ЗАДАЧУ</p><p>Повторить слова или поговорить на нужную тему</p></div><button type="button" className="dialogue-entry" onClick={() => setDialogue(true)}><Icon name="map" /><span>{study.dialogueSessions?.[study.language] && !study.dialogueSessions[study.language].completedAt ? 'Продолжить диалог' : 'Диалог по теме'}<small>Тема + слова из Anki</small></span><Icon name="arrow" /></button></div>
     <div className="today-grid">
       <section className={'daily-hero ' + (completed ? 'daily-complete' : '')} aria-labelledby="today-lesson-title">
         <div className="hero-content"><p className="eyebrow"><span className="status-dot" />{completed ? 'СЕГОДНЯ УЖЕ ПОЛУЧИЛОСЬ' : session ? 'ТВОЁ ЗАНЯТИЕ СОХРАНЕНО' : 'ТВОЯ ЕЖЕДНЕВНАЯ ПРАКТИКА'}</p>
