@@ -298,7 +298,7 @@ export function Account() {
       await update(current => selectLanguage(current, language));
     } catch { notify('Введи код языка, например en, zh или es.'); }
   }
-  return <><Heading title="Кабинет" detail="Словарь, импорт и история повторений." />
+  return <><Heading title="Мои слова" detail="Словарь, импорт и история повторений." />
     <LanguageOptions />
     <div className="account-sections" role="group" aria-label="Разделы кабинета">
       {(Object.keys(sections) as Section[]).map(value => <button type="button" key={value} aria-pressed={section === value}

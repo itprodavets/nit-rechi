@@ -43,7 +43,7 @@ export function LanguageMenu() {
   }}>
     <summary aria-label={'Язык · ' + languageName(study.language)} title={languageName(study.language)}><LanguageFlag code={study.language} /><span aria-hidden="true">⌄</span></summary>
     <div className="language-popover" aria-label="Изучаемые языки">
-      {languages.map(code => <button type="button" key={code} aria-pressed={code === study.language} onClick={async () => {
+      {languages.map(code => <button type="button" key={code} aria-label={languageName(code)} aria-pressed={code === study.language} onClick={async () => {
         if (await update(current => selectLanguage(current, code))) {
           menu.current?.querySelector('summary')?.focus();
           if (menu.current) menu.current.open = false;

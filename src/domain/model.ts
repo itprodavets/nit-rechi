@@ -54,6 +54,7 @@ export interface PracticeResult {
   mode?: PracticeMode;
   spokenResult?: Outcome;
   spokenUpdated?: number;
+  schedules?: Partial<Record<PracticeMode, { level: number; due: number; updated?: number }>>;
 }
 
 export type DailyWord = { wordId: string; lapses: number; fromReview?: true };
@@ -80,13 +81,14 @@ export interface Study {
   results: Record<string, PracticeResult>;
   ankiImports?: Record<string, AnkiImportReport>;
   dailySpeech?: Record<string, DailySpeech>;
+  learningSessions?: Record<string, import('./learning-session').LearningSession>;
   practiceDays?: Record<string, Record<string, Partial<Record<PracticeMode, PracticeCounts>>>>;
 }
 
 export type PracticeItem = Word | Topic | Resource;
-export type Page = 'practice' | 'map' | 'materials' | 'progress' | 'account';
+export type Page = 'today' | 'practice' | 'map' | 'materials' | 'progress' | 'account';
 export const pages: Record<Page, string> = {
-  practice: 'Практика', map: 'Карта', materials: 'Материалы', progress: 'Прогресс', account: 'Кабинет'
+  today: 'Сегодня', practice: 'Практика', map: 'Карта тем', materials: 'Материалы', progress: 'Прогресс', account: 'Мои слова'
 };
 
 export const kinds: Record<MaterialKind, { label: string; action: string; prompt: string }> = {
@@ -144,10 +146,16 @@ export function lastSpoken(result?: PracticeResult) {
 
 export function assess(study: Study, id: string, result: Outcome, now: number, mode: PracticeMode): Study {
   const previous = study.results[id];
-  const level = result === 'independent' ? (previous?.level ?? 0) + 1 : 0;
+  const previousLevel = previous?.schedules?.[mode]?.level ?? (previous && (previous.mode ?? 'spoken') === mode ? previous.level : 0);
+  const previousAt = previous?.schedules?.[mode]?.updated ?? (previous && (previous.mode ?? 'spoken') === mode ? previous.updated : undefined);
+  const sameDay = previousAt !== undefined && localDay(previousAt) === localDay(now);
+  const level = result === 'independent' ? sameDay ? Math.max(1, previousLevel) : previousLevel + 1 : 0;
   const days = [1, 3, 7, 14, 30][Math.min(Math.max(level - 1, 0), 4)];
   const spoken = mode === 'spoken' ? { outcome: result, updated: now } : lastSpoken(previous);
-  const next = { level, result, due: now + (result === 'retry' ? 0 : days * day), attempts: (previous?.attempts ?? 0) + 1, updated: now, mode, spokenResult: spoken.outcome, spokenUpdated: spoken.updated };
+  const schedules = { ...previous?.schedules };
+  if (previous && !schedules[previous.mode ?? 'spoken']) schedules[previous.mode ?? 'spoken'] = { level: previous.level, due: previous.due, updated: previous.updated };
+  schedules[mode] = { level, due: now + (result === 'retry' ? 0 : days * day), updated: now };
+  const next = { level, result, due: Math.min(...Object.values(schedules).map(schedule => schedule.due)), schedules, attempts: (previous?.attempts ?? 0) + 1, updated: now, mode, spokenResult: spoken.outcome, spokenUpdated: spoken.updated };
   const language = study.language;
   const date = localDay(now);
   const recentDays = Object.fromEntries(Object.entries(study.practiceDays?.[language] ?? {})
