@@ -6,6 +6,8 @@ import { languageCodes, LanguageLabel } from './Language';
 import { suggestMaterialLanguage } from '../domain/language-detection';
 import { kinds, languageName, selectLanguage, upsert } from '../domain/model';
 import type { MaterialKind, Resource } from '../domain/model';
+import { Recording } from './Recording';
+import { StoryVersions } from './StoryVersions';
 import { StarterMaterials } from './StarterMaterials';
 import { copyText, Fold, Heading, SourceLink, SourceText } from './common';
 
@@ -176,6 +178,7 @@ export function Materials() {
             <SourceText text={resource.text} language={resource.language} />
             {resource.translation && <Fold title="Перевод на русский"><p className="source-text" lang="ru">{resource.translation}</p></Fold>}
           </Fold>}
+          {resource.story && <><StoryVersions story={resource.story} language={resource.language} /><Fold title="Первая голосовая попытка"><Recording itemId={resource.id} language={resource.language} readOnly /></Fold></>}
           <div className="actions">
             <button className="primary" type="button" onClick={() => practice(resource.id)}>{kind.action}</button>
             <button type="button" onClick={() => {

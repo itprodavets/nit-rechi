@@ -1,4 +1,5 @@
 import type { Study } from './model';
+import { upgradeStarterTopics } from './starter-topics';
 
 const key = 'nit-rechi-v1';
 const marker = 'indexeddb';
@@ -33,10 +34,10 @@ export async function readStudy(): Promise<Study> {
   });
   if (fromDatabase) {
     migrated = true;
-    return { ...fromDatabase, resources: fromDatabase.resources ?? [] };
+    return upgradeStarterTopics({ ...fromDatabase, resources: fromDatabase.resources ?? [] });
   }
   if (saved === marker) throw new Error('Missing vocabulary in IndexedDB');
-  if (saved) return { resources: [], ...JSON.parse(saved) };
+  if (saved) return upgradeStarterTopics({ resources: [], ...JSON.parse(saved) });
   return { language: 'en', languages: { en: {} }, words: [], topics: [], resources: [], results: {} };
 }
 

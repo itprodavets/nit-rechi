@@ -3,7 +3,7 @@ import { SpeechFeedback } from './SpeechFeedback';
 import { useWorkspace } from '../context';
 import { deleteTake, getTake, isRecording, stopVoice, toggleRecording } from '../domain/voice.js';
 
-export function Recording({ itemId, language, targets = [] }: { itemId: string; language: string; targets?: string[] }) {
+export function Recording({ itemId, language, targets = [], onTranscript, readOnly = false }: { itemId: string; language: string; targets?: string[]; onTranscript?: (text: string) => void; readOnly?: boolean }) {
   const { notify } = useWorkspace();
   const [revision, refresh] = useState(0);
   const [take, setTake] = useState<{ blob: Blob; url: string }>();
@@ -29,8 +29,8 @@ export function Recording({ itemId, language, targets = [] }: { itemId: string; 
     catch { notify('Не удалось удалить запись.'); }
   }
   return <div className="recording">
-    <button type="button" id="record" aria-pressed={recording} onClick={record}>{recording ? 'Остановить запись' : 'Записать ответ'}</button>
-    {take && !recording && <><div className="take"><audio controls preload="metadata" aria-label="Твоя запись" src={take.url} /><button type="button" className="subtle" onClick={clear}>Удалить запись</button></div>
-      <SpeechFeedback key={take.url} recording={take.blob} language={language} targets={targets} /></>}
+    {!readOnly && <button type="button" aria-pressed={recording} onClick={record}>{recording ? 'Остановить запись' : 'Записать ответ'}</button>}
+    {take && !recording && <><div className="take"><audio controls preload="metadata" aria-label="Твоя запись" src={take.url} />{!readOnly && <button type="button" className="subtle" onClick={clear}>Удалить запись</button>}</div>
+      {!readOnly && <SpeechFeedback key={take.url} recording={take.blob} language={language} targets={targets} onTranscript={onTranscript} />}</>}
   </div>;
 }

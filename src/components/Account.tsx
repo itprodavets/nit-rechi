@@ -162,7 +162,7 @@ function AnkiImport({ done }: { done: () => void }) {
       if (groups.some(({ columns }) => columns.filter(Boolean).length !== new Set(columns.filter(Boolean)).size)) {
         throw new Error('Для каждого типа укажи разные поля слова, значения и примера.');
       }
-      const entries = groups.flatMap(group => archiveWords(group.available, languageFor, group.columns));
+      const entries = groups.flatMap(group => archiveWords(group.available, languageFor, group.columns, archive.decks));
       if (!entries.length) throw new Error('В выбранной колонке нет слов.');
       const batches = new Map<string, Review[]>();
       for (const { word, reviews } of entries) {
@@ -219,7 +219,7 @@ function AnkiImport({ done }: { done: () => void }) {
       </div>
       {noteCount !== readyCount && <p className="sub">У {noteCount - readyCount} заметок пустое поле слова. Проверь поля ниже.</p>}
       {noteCount !== archive.notes.length && <p className="sub">Выбрано {noteCount} из {archive.notes.length} заметок.</p>}
-      <p className="sub">Заметки без истории тоже попадут в словарь.</p>
+      <p className="sub">Все колоды сохранят свои названия. Одинаковые слова из разных заметок останутся отдельными — со своими значениями и историей. Заметки без повторений тоже попадут в словарь.</p>
       {autoByDeck && <p className="sub">Языки определяются для каждой колоды. Если колода не распознана, используется язык, указанный ниже.</p>}
       <details className="fold import-options"><summary>Выбор колод и полей</summary>
       {deckChoices.length > 0 && <label>Колода <select value={deck} onChange={event => { setDeck(event.target.value); setType('all'); setOverrides({}); setLanguage(undefined); }}>
@@ -284,7 +284,7 @@ function AnkiImport({ done }: { done: () => void }) {
 }
 
 type Section = 'words' | 'import' | 'reviews';
-const sections: Record<Section, string> = { words: 'Все слова', import: 'Импорт Anki', reviews: 'Диалог из повторений' };
+const sections: Record<Section, string> = { words: 'Все слова', import: 'Импорт Anki', reviews: 'Практика по теме' };
 
 export function Account() {
   const { study, active, update, notify } = useWorkspace();

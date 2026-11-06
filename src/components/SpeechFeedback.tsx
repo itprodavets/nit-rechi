@@ -13,8 +13,8 @@ function Highlighted({ text, language, marks }: {
   })}</p>;
 }
 
-export function SpeechFeedback({ recording, language, targets }: {
-  recording: Blob; language: string; targets: string[];
+export function SpeechFeedback({ recording, language, targets, onTranscript }: {
+  recording: Blob; language: string; targets: string[]; onTranscript?: (text: string) => void;
 }) {
   const [availability, setAvailability] = useState<Awaited<ReturnType<typeof localSpeechAvailability>>>();
   const [message, setMessage] = useState('');
@@ -79,6 +79,7 @@ export function SpeechFeedback({ recording, language, targets }: {
         Проверь согласование: <span lang={language}>{transcript.slice(issue.start, issue.end)} → <strong>{issue.correction}</strong></span>
       </li>)}</ul>}
       <p className="sub">Проверь точность расшифровки. Подсказки охватывают отдельные правила и не оценивают произношение.</p>
+      {onTranscript && <button type="button" onClick={() => onTranscript(transcript)}>Использовать расшифровку в рассказе</button>}
     </>}
     <div className="actions">
       {!manual && (availability === 'downloadable' || availability === 'downloading') &&

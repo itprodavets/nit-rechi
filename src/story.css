@@ -1,0 +1,44 @@
+.topic-studio { min-width: 0; }
+.saved-topic-sessions { margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.saved-topic-sessions summary { cursor: pointer; color: var(--muted); }
+.saved-topic-sessions .actions { margin-top: 16px; }
+.story-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: clamp(24px, 3vw, 56px); align-items: start; }
+.story-editor, .story-support { min-width: 0; }
+.story-editor { padding: clamp(20px, 3vw, 40px); background: #fff; border: 1px solid var(--line); border-radius: 24px; }
+.story-editor h3 { font-size: clamp(22px, 2vw, 30px); line-height: 1.25; margin: 24px 0 12px; }
+.story-encouragement { line-height: 1.8; color: var(--muted); margin-bottom: 28px; max-width: 76ch; }
+.story-editor textarea { font-size: 17px; line-height: 1.85; padding: 20px; resize: vertical; min-height: 160px; border-radius: 14px; }
+.story-editor textarea.story-text { min-height: 370px; }
+.story-text-label { gap: 12px; }
+.story-writing-note { margin: 12px 0 24px; }
+.story-support .fold { margin: 20px 0; }
+.story-memory { background: #eaf1ec; padding: 24px; border-radius: 20px; }
+.story-memory summary { font-size: 19px; font-weight: 650; cursor: pointer; }
+.story-memory > div { border-top: 1px solid #d3e1d6; padding-top: 16px; margin-top: 16px; }
+.story-memory p { font-size: 14px; line-height: 1.65; margin: 6px 0 0; }
+.story-memory strong { font-size: 14px; }
+.story-example { padding: 24px; border: 1px solid var(--line); border-radius: 20px; }
+.story-example h3 { font-size: 21px; }
+.story-example .source-text { font-size: 16px; line-height: 1.85; }
+.story-word { padding: 16px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.story-word p { font-size: 14px; }
+.story-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.story-comparison textarea[readonly] { background: #f5f6f3; color: #53615b; }
+.story-correction-tools { margin: 24px 0; }
+.story-correction-tools p { margin-top: 12px; }
+.story-notes { margin: 24px 0; }
+.story-word-rating { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.story-word-rating small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.story-support .source-text, .story-versions .source-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.word-deck-label { font-size: 11px !important; color: #7b857f !important; }
+.word-library .word-filters { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr); }
+.word-filters label, .setup-vocabulary > label, .setup-topic label { min-width: 0; }
+.word-filters select, .setup-vocabulary > label select, .setup-topic select { max-width: 100%; text-overflow: ellipsis; }
+.setup-vocabulary > label { margin-bottom: 16px; }
+.vocabulary-term small { overflow-wrap: anywhere; }
+.story-revision-layout { grid-template-columns: minmax(0,1fr); }
+.story-revision-layout .story-support { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; }
+@media (max-width: 800px) { .story-layout, .story-comparison, .story-revision-layout .story-support { grid-template-columns: minmax(0,1fr); } .story-editor { padding: 20px; } .word-library .word-filters { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 420px) { .story-editor { padding: 16px; border-radius: 18px; } .story-editor textarea { padding: 12px; } .story-word-rating { grid-template-columns: minmax(0,1fr); } }
+
+.deck-scope { display: block; margin-top: 6px; font-size: 11px; color: var(--muted); font-weight: 400; overflow-wrap: anywhere; }

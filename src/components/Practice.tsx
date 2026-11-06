@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { useWorkspace } from '../context';
 import { assess, dateLabel, kinds, modeLabels, normalize, practiceQueue, resultLabels, topicMaterials } from '../domain/model';
 import type { Outcome, PracticeItem, PracticeMode, Study, Word } from '../domain/model';
+import { practiceRecordingId } from '../domain/story-session';
+import { TopicStudio } from './TopicStudio';
 import { Recording } from './Recording';
 import { WordCue } from './WordCue';
 import { addExample } from '../domain/sample-study';
@@ -84,7 +86,7 @@ function PracticeCard({ item, next, mode, options, score }: {
       </Fold>}
       {resource?.kind === 'exercise' && resource.text && <GlossaryText text={resource.text} language={item.language} glossary={glossary} />}
       {word && !word.meaning && <VoiceButtons text={word.title} language={item.language} />}
-      {mode === 'spoken' ? <Recording itemId={item.id} language={item.language} targets={word ? [word.title] : [...new Set(topicWords.map(word => word.title))]} /> : <form className="practice-response" onSubmit={event => {
+      {mode === 'spoken' ? <Recording itemId={practiceRecordingId(item)} language={item.language} targets={word ? [word.title] : [...new Set(topicWords.map(word => word.title))]} /> : <form className="practice-response" onSubmit={event => {
         event.preventDefault();
         if (answer.trim()) setChecked(true);
       }}>
@@ -156,6 +158,7 @@ export function Practice() {
     practice(queue[(index + 1) % queue.length].id);
     reset(value => value + 1);
   }
+  if (item && 'links' in item) return <><Heading title="Практика по теме" detail="Расскажи свою историю или разыграй разговор." /><a className="back-to-today" href="#map">← К карте тем</a><TopicStudio key={item.id} initialTopicId={item.id} /></>;
   return <><Heading title="Свободная практика" detail="Выбери способ ответа и тренируйся в своём темпе." /><a className="back-to-today" href="#today">← К занятию на сегодня</a>
     {item ? <>
       <div className="practice-modes" role="group" aria-label="Способ ответа">
