@@ -43,3 +43,21 @@ export async function readReviews(key: string): Promise<Review[]> {
     request.onerror = () => reject(request.error);
   });
 }
+
+export async function readReviewedKeys(language: string, start: number, end: number): Promise<Set<string>> {
+  const db = await openHistory();
+  const prefix = JSON.stringify([language]).slice(0, -1) + ',';
+  return new Promise((resolve, reject) => {
+    const keys = new Set<string>();
+    const range = IDBKeyRange.bound(prefix, prefix + '\uffff');
+    const request = db.transaction('notes').objectStore('notes').openCursor(range);
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) { resolve(keys); return; }
+      const reviews: Review[] = cursor.value;
+      if (reviews.some(([at]) => at >= start && at < end)) keys.add(String(cursor.key));
+      cursor.continue();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
